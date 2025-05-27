@@ -712,11 +712,12 @@ const CodeChefProfileAnalyzer = () => {
                                 <div className="mb-6">
                                     <h3 className="text-lg font-semibold mb-3 text-purple-400 flex items-center">
                                         <TableCellsIcon className="h-5 w-5 mr-2" />
-                                        Recent Contest History
+                                        Contest History {/* Changed "Recent Contest History" to "Contest History" */}
                                     </h3>
                                     <div className="bg-slate-700/30 rounded-lg p-4 max-h-64 overflow-y-auto">
                                         <div className="space-y-2">
-                                            {selectedUser.data.ratingData.slice(0, 10).map((contest, i) => (
+                                            {/* MODIFIED: Removed .slice(0, 10) to show all contests */}
+                                            {selectedUser.data.ratingData.map((contest, i) => (
                                                 <div key={contest.code + i}
                                                     className={`p-3 rounded-md border-l-4 ${contest.penalised_in && contest.penalised_in.length > 0
                                                         ? 'bg-red-900/20 border-red-400'
@@ -814,8 +815,8 @@ const CodeChefProfileAnalyzer = () => {
 
                     {/* Copyright */}
                     <div className="text-sm text-slate-500 border-t border-slate-700 pt-4">
-                        <p>🌟 Built with passion and a pinch of late-night coffee — by Ayan Pandey.</p>
-                        <p>&copy; 2025 CodeChef Profile Analyzer. </p>
+                        <p>🌟 Built with passion and a pinch of late-night coffee — by Ayan Pandey 2023-27 IT.</p>
+                        <p>© 2025 CodeChef Profile Analyzer. </p>
                     </div>
                 </div>
             </footer>
