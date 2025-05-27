@@ -1,14 +1,18 @@
-// src/App.jsx
-import React from 'react';
-import CodeChefProfileAnalyzer from './components/CodeChefProfileAnalyzer';
-import './index.css'; // Make sure your main Tailwind CSS file is imported
+import React, { useState } from "react";
+import CodeChefProfileAnalyzer from "./components/CodeChefProfileAnalyzer";
+import Login from "./components/Login";
+import "./index.css";
 
-function App() {
-    return (
-        <div>
-            <CodeChefProfileAnalyzer />
-        </div>
-    );
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  return (
+    <div>
+      {isLoggedIn ? (
+        <CodeChefProfileAnalyzer />
+      ) : (
+        <Login onLoginSuccess={() => setIsLoggedIn(true)} />
+      )}
+    </div>
+  );
 }
-
-export default App;

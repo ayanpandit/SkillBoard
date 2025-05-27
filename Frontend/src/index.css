@@ -1,3 +1,32 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Reset all margins and paddings */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Make HTML and body take full viewport and prevent horizontal scroll */
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;   /* prevent horizontal scroll */
+  overflow-y: auto;     /* allow vertical scroll when needed */
+  background-color: #000000; /* ✅ replace with your desired background */
+  font-family: Arial, sans-serif; /* optional */
+}
+
+/* Prevent margin collapse by giving body a little padding */
+body {
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+
+/* Ensure React root takes full height */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
