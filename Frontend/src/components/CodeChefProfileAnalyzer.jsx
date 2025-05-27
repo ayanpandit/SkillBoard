@@ -814,7 +814,8 @@ const CodeChefProfileAnalyzer = () => {
 
                     {/* Copyright */}
                     <div className="text-sm text-slate-500 border-t border-slate-700 pt-4">
-                        <p>&copy; 2024 CodeChef Profile Analyzer. Built with ❤️ for the coding community.</p>
+                        <p>🌟 Built with passion and a pinch of late-night coffee — by Ayan Pandey.</p>
+                        <p>&copy; 2025 CodeChef Profile Analyzer. </p>
                     </div>
                 </div>
             </footer>
