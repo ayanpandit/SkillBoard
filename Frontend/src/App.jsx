@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-/*import CodeChefProfileAnalyzer from "./components/CodeChefProfileAnalyzer";
+import CodeChefProfileAnalyzer from "./components/CodeChefProfileAnalyzer";
 import Login from "./components/Login";
 import "./index.css";
 
@@ -15,8 +15,8 @@ export default function App() {
       )}
     </div>
   );
-}*/
-import MaintenancePage from "./components/MaintenancePage";
+}
+/*import MaintenancePage from "./components/MaintenancePage";
 import "./index.css";
 export default function App() {
   return (
@@ -24,5 +24,5 @@ export default function App() {
       <MaintenancePage />
     </div>
   );
-}
+}*/
 

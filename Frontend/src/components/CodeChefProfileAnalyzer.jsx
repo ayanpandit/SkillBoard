@@ -20,13 +20,25 @@ import {
     TagIcon, // For contest number search
 } from '@heroicons/react/24/outline'; // Using Heroicons v2
 
-// API Configuration
+//===============================================================================================
+/*const API_CONFIG = {
+    host: 'skillboard-yyn4.onrender.com',
+    protocol: 'https',
+    port: '', // no port needed for HTTPS
+};
+
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;*/
+//====================================================================================================
 const API_CONFIG = {
     host: 'skillboard-production.up.railway.app',
     protocol: 'https',
-    port: '', // Not needed for HTTPS
+    port: '', // No port needed for HTTPS
 };
+
 const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;
+
+//====================================================================================================
+
 
 
 // Debounce function
