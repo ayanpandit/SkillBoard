@@ -21,21 +21,21 @@ import {
 } from '@heroicons/react/24/outline'; // Using Heroicons v2
 
 //===============================================================================================
-/*const API_CONFIG = {
+const API_CONFIG = {
     host: 'skillboard-yyn4.onrender.com',
     protocol: 'https',
     port: '', // no port needed for HTTPS
 };
 
-const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;*/
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;
 //====================================================================================================
-const API_CONFIG = {
+/*const API_CONFIG = {
     host: 'skillboard-production.up.railway.app',
     protocol: 'https',
     port: '', // No port needed for HTTPS
 };
 
-const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;*/
 
 //====================================================================================================
 
