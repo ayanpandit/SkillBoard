@@ -22,7 +22,8 @@ from functools import wraps
 import gc
 
 app = Flask(__name__)
-CORS(app)
+#CORS(app)
+CORS(app, origins=["https://skillboard-production-3650.up.railway.app"])
 
 # Configure logging
 logging.basicConfig(
