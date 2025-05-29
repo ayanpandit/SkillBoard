@@ -1,0 +1,9 @@
+{
+  "build": {
+    "env": "production",
+    "command": "npm run build"
+  },
+  "deploy": {
+    "startCommand": "npx serve dist"
+  }
+}
