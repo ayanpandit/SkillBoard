@@ -29,22 +29,23 @@ import {
 
 const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;*/
 //====================================================================================================
-/*const API_CONFIG = {
+const API_CONFIG = {
     host: 'skillboard-production.up.railway.app',
     protocol: 'https',
-    port: '', // No port needed for HTTPS
+    port: '',  // no port needed for HTTPS
 };
 
-const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;*/
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}`;
+
 
 //====================================================================================================
-const API_CONFIG = {
+/*const API_CONFIG = {
     host: 'localhost',
     protocol: 'http',
     port: '5000', // or whatever port your Flask backend is using
 };
 
-const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}${API_CONFIG.port ? `:${API_CONFIG.port}` : ''}`;
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}${API_CONFIG.port ? `:${API_CONFIG.port}` : ''}`;*/
 
 //====================================================================================================
 
