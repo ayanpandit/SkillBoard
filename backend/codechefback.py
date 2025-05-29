@@ -629,10 +629,18 @@ if __name__ == '__main__':
     # serve(app, host='0.0.0.0', port=5000, threads=APIConfig.MAX_CONCURRENT_REQUESTS * 2) # Waitress threads are different
     
     # Using Flask's built-in server for development/simplicity:
-    app.run(
+    """app.run(
         debug=False,
         host='0.0.0.0',
         port=5000,
         threaded=True, # Flask's built-in server uses one thread per request if threaded=True
         use_reloader=False
-    )
+    )"""
+    #above will be used when testing locally but for production we will use Railway's port below 
+    app.run(
+    debug=False,
+    host='0.0.0.0',
+    port=int(os.environ.get('PORT', 5000)),  # use Railway port or fallback to 5000 locally
+    threaded=True,
+    use_reloader=False
+)
