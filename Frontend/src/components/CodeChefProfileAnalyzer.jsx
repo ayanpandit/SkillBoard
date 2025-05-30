@@ -8,16 +8,32 @@ import {
     TagIcon,
 } from '@heroicons/react/24/outline';
 
-// API_CONFIG and API_BASE_URL remain the same
+/*// API_CONFIG and API_BASE_URL remain the same
 const API_CONFIG = {
     host: 'localhost',
     protocol: 'http',
     port: '5000',
 };
-const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}${API_CONFIG.port ? `:${API_CONFIG.port}` : ''}`;
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}${API_CONFIG.port ? `:${API_CONFIG.port}` : ''}`;*/
 
 
 // Debounce function remains the same
+// API_CONFIG for the hosted Render backend
+const API_CONFIG = {
+    host: 'codechefprofileanalyzerbackendnode.onrender.com',
+    protocol: 'https',
+    port: '', // Standard HTTPS port (443) is implied and usually not specified in the URL.
+              // Setting it to empty string ensures it's not appended by your logic.
+};
+
+// API_BASE_URL will now correctly construct the Render URL
+const API_BASE_URL = `${API_CONFIG.protocol}://${API_CONFIG.host}${API_CONFIG.port ? `:${API_CONFIG.port}` : ''}`;
+
+// This will result in:
+// API_BASE_URL = "https://codechefprofileanalyzerbackendnode.onrender.com"
+
+// You would then use API_BASE_URL in your fetch requests, e.g.:
+// fetch(`${API_BASE_URL}/api/some-endpoint`, { ... })
 const debounce = (func, delay) => {
     let timeoutId;
     return (...args) => {

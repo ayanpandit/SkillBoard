@@ -1,17 +1,18 @@
+// src/App.jsx
 import React, { useState } from "react";
 import CodeChefProfileAnalyzer from "./components/CodeChefProfileAnalyzer";
-import Login from "./components/Login";
+import InitialLoader from "./components/Login"; // Or "./components/InitialLoader" if you renamed the file
 import "./index.css";
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAppReady, setIsAppReady] = useState(false);
 
   return (
     <div>
-      {isLoggedIn ? (
+      {isAppReady ? (
         <CodeChefProfileAnalyzer />
       ) : (
-        <Login onLoginSuccess={() => setIsLoggedIn(true)} />
+        <InitialLoader onLoadingComplete={() => setIsAppReady(true)} />
       )}
     </div>
   );
