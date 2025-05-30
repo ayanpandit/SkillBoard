@@ -184,7 +184,7 @@ const logger = {
 
 // --- CORS Configuration ---
 const allowedOrigins = [
-    "https://codechefprofileanalyzerbackendnode.onrender.com",
+    "hhttps://codechefprofileanalyzerbyayanpandit.onrender.com",
     "http://localhost:5173", // Your React dev server
     // Add any other origins you need
 ];
