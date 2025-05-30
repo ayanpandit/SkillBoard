@@ -17,6 +17,7 @@ const port = process.env.PORT || 5000;
 app.set('trust proxy', 1);
 
 
+
 // --- Configuration ---
 const APIConfig = {
     MAX_CONCURRENT_API_CALLS: 50, // Max parallel calls to external CodeChef APIs.
@@ -183,7 +184,7 @@ const logger = {
 
 // --- CORS Configuration ---
 const allowedOrigins = [
-    "https://skillboard-production-3650.up.railway.app",
+    "https://codechefprofileanalyzerbackendnode.onrender.com",
     "http://localhost:5173", // Your React dev server
     // Add any other origins you need
 ];
