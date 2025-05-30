@@ -40,7 +40,7 @@ export default function Login({ onLoginSuccess }) {
 
         try {
             // *** CRITICAL CHANGE HERE: Added /login to the endpoint ***
-            const response = await fetch("https://authorization-u5ko.onrender.com/login", {
+            const response = await fetch("https://authorization-wig7.onrender.com", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
