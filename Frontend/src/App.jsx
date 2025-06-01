@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from "react";
+/*import React, { useState } from "react";
 import CodeChefProfileAnalyzer from "./components/CodeChefProfileAnalyzer";
 import InitialLoader from "./components/Login"; // Or "./components/InitialLoader" if you renamed the file
 import "./index.css";
@@ -16,7 +16,7 @@ export default function App() {
       )}
     </div>
   );
-}
+}*/
 /*import MaintenancePage from "./components/MaintenancePage";
 import "./index.css";
 export default function App() {
@@ -26,4 +26,15 @@ export default function App() {
     </div>
   );
 }*/
+import "./index.css";
+import LeetCodeProfileAnalyzer from './components/LeetCodeProfileAnalyzer'
+
+function App() {
+  return (
+    <div className="App">
+      <LeetCodeProfileAnalyzer />
+    </div>
+  )
+}
+export default App;
 

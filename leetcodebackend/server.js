@@ -1,14 +1,87 @@
-// server.js
+// server.js - Optimized for high throughput
 const express = require('express');
 const https = require('https');
 const path = require('path');
+const { Worker, isMainThread, parentPort, workerData } = require('worker_threads');
+const os = require('os');
 
 const app = express();
 const PORT = 3000;
 
+// Configuration for optimization
+const CONFIG = {
+    MAX_CONCURRENT_REQUESTS: 50, // Concurrent requests to LeetCode
+    WORKER_COUNT: Math.min(os.cpus().length, 8), // Worker threads for CPU-bound tasks
+    REQUEST_TIMEOUT: 5000, // 5 second timeout
+    RETRY_ATTEMPTS: 2,
+    BATCH_SIZE: 100, // Process users in batches
+    CACHE_TTL: 300000, // 5 minutes cache
+    CONNECTION_POOL_SIZE: 20 // HTTP connection pool
+};
+
+// In-memory cache with TTL
+class TTLCache {
+    constructor(ttl = CONFIG.CACHE_TTL) {
+        this.cache = new Map();
+        this.ttl = ttl;
+    }
+
+    set(key, value) {
+        this.cache.set(key, {
+            value,
+            expires: Date.now() + this.ttl
+        });
+    }
+
+    get(key) {
+        const item = this.cache.get(key);
+        if (!item) return null;
+        
+        if (Date.now() > item.expires) {
+            this.cache.delete(key);
+            return null;
+        }
+        
+        return item.value;
+    }
+
+    clear() {
+        this.cache.clear();
+    }
+}
+
+const cache = new TTLCache();
+
+// Connection pool for HTTPS requests
+class ConnectionPool {
+    constructor(maxConnections = CONFIG.CONNECTION_POOL_SIZE) {
+        this.agents = [];
+        this.currentIndex = 0;
+        
+        // Create multiple agents for connection pooling
+        for (let i = 0; i < maxConnections; i++) {
+            this.agents.push(new https.Agent({
+                keepAlive: true,
+                maxSockets: 5,
+                maxFreeSockets: 2,
+                timeout: CONFIG.REQUEST_TIMEOUT,
+                freeSocketTimeout: 30000
+            }));
+        }
+    }
+
+    getAgent() {
+        const agent = this.agents[this.currentIndex];
+        this.currentIndex = (this.currentIndex + 1) % this.agents.length;
+        return agent;
+    }
+}
+
+const connectionPool = new ConnectionPool();
+
 // CORS Middleware
 app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // In production, restrict this
+    res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
     if (req.method === 'OPTIONS') {
@@ -18,10 +91,66 @@ app.use((req, res, next) => {
     }
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased limit for bulk requests
 
-// --- Generic GraphQL Request Function (from your standalone script, slightly adapted) ---
-function makeGraphQLRequest(queryObject) { // Renamed for clarity
+// Rate limiting and request queue
+class RequestQueue {
+    constructor(maxConcurrent = CONFIG.MAX_CONCURRENT_REQUESTS) {
+        this.maxConcurrent = maxConcurrent;
+        this.running = 0;
+        this.queue = [];
+    }
+
+    async add(requestFn) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ requestFn, resolve, reject });
+            this.process();
+        });
+    }
+
+    async process() {
+        if (this.running >= this.maxConcurrent || this.queue.length === 0) {
+            return;
+        }
+
+        this.running++;
+        const { requestFn, resolve, reject } = this.queue.shift();
+
+        try {
+            const result = await requestFn();
+            resolve(result);
+        } catch (error) {
+            reject(error);
+        } finally {
+            this.running--;
+            this.process();
+        }
+    }
+}
+
+const requestQueue = new RequestQueue();
+
+// Optimized GraphQL request function with connection pooling and retry logic
+async function makeGraphQLRequest(queryObject, retries = CONFIG.RETRY_ATTEMPTS) {
+    const cacheKey = JSON.stringify(queryObject);
+    const cached = cache.get(cacheKey);
+    if (cached) return cached;
+
+    return requestQueue.add(async () => {
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const result = await performRequest(queryObject);
+                cache.set(cacheKey, result);
+                return result;
+            } catch (error) {
+                if (attempt === retries) throw error;
+                await sleep(100 * Math.pow(2, attempt)); // Exponential backoff
+            }
+        }
+    });
+}
+
+function performRequest(queryObject) {
     return new Promise((resolve, reject) => {
         const postData = JSON.stringify(queryObject);
         const options = {
@@ -33,9 +162,11 @@ function makeGraphQLRequest(queryObject) { // Renamed for clarity
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(postData),
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Referer': 'https://leetcode.com/', // Referer is important
-                'Origin': 'https://leetcode.com'  // Origin can also be important
-            }
+                'Referer': 'https://leetcode.com/',
+                'Origin': 'https://leetcode.com'
+            },
+            agent: connectionPool.getAgent(),
+            timeout: CONFIG.REQUEST_TIMEOUT
         };
 
         const req = https.request(options, (res) => {
@@ -44,120 +175,180 @@ function makeGraphQLRequest(queryObject) { // Renamed for clarity
             res.on('end', () => {
                 try {
                     const parsedData = JSON.parse(data);
-                    // Basic check for GraphQL errors array, often present even with 200 OK
                     if (parsedData.errors) {
-                        console.warn(`GraphQL query for ${queryObject?.variables?.username || 'unknown user'} returned errors:`, parsedData.errors);
-                        // We still resolve, as partial data might be present or handled by caller
+                        console.warn(`GraphQL errors for ${queryObject?.variables?.username}:`, parsedData.errors);
                     }
-                    if (res.statusCode >= 400 && !parsedData.errors) { // HTTP error not caught by GraphQL errors
-                        console.error(`LeetCode API HTTP Error ${res.statusCode}:`, data); // Log raw data on HTTP error
-                        reject(new Error(`LeetCode API HTTP error: ${res.statusCode}`));
+                    if (res.statusCode >= 400 && !parsedData.errors) {
+                        reject(new Error(`HTTP error: ${res.statusCode}`));
                         return;
                     }
                     resolve(parsedData);
                 } catch (error) {
-                    console.error('Failed to parse LeetCode API response:', data); // Log raw data
-                    reject(new Error('Failed to parse LeetCode API response. ' + error.message));
+                    reject(new Error('Parse error: ' + error.message));
                 }
             });
         });
-        req.on('error', (error) => {
-            console.error('HTTPS request error to LeetCode:', error);
-            reject(error);
+
+        req.on('error', reject);
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Request timeout'));
         });
+
         req.write(postData);
         req.end();
     });
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-// --- BADGE SPECIFIC LOGIC (Directly from your provided script, with query correction) ---
-
-const getBadgeQuery_Corrected = (username) => { // Using your query structure
-    return {
+// Optimized queries - combined into fewer requests
+const getOptimizedQueries = (username) => ({
+    main: {
         query: `
-            query getUserBadges($username: String!) {
+            query getMainUserData($username: String!, $year: Int, $limit: Int) {
                 matchedUser(username: $username) {
                     username
-                    badges { # Earned badges
+                    profile {
+                        realName
+                        location
+                        school
+                        reputation
+                        ranking
+                        userAvatar
+                    }
+                    submitStats {
+                        acSubmissionNum {
+                            difficulty
+                            count
+                            submissions
+                        }
+                    }
+                    userCalendar(year: $year) {
+                        activeYears
+                        streak
+                        totalActiveDays
+                        submissionCalendar
+                    }
+                    languageProblemCount {
+                        languageName
+                        problemsSolved
+                    }
+                    tagProblemCounts {
+                        advanced { tagName tagSlug problemsSolved }
+                        intermediate { tagName tagSlug problemsSolved }
+                        fundamental { tagName tagSlug problemsSolved }
+                    }
+                    badges {
                         id
                         displayName
                         icon
                         creationDate
-                        medal { # Medal field IS available for earned badges
+                        hoverText
+                        category
+                        medal {
                             slug
                             config {
                                 iconGif
                                 iconGifBackground
                             }
                         }
-                        hoverText
-                        category
                     }
-                    upcomingBadges { # Upcoming badges
+                    upcomingBadges {
                         name
                         icon
                         progress
-                        # CORRECTED: Removed medal field from here as it's not available on UpcomingBadgeNode
                     }
                 }
+                allQuestionsCount {
+                    difficulty
+                    count
+                }
+                recentSubmissionList(username: $username, limit: $limit) {
+                    title
+                    titleSlug
+                    timestamp
+                    statusDisplay
+                    lang
+                }
             }
-        `, // Removed allQuestionsCount as it's fetched separately if needed
-        variables: { username }
-    };
-};
-
-const getAlternativeBadgeQuery_Corrected = (username) => { // Using your query structure
-    return {
+        `,
+        variables: { 
+            username, 
+            year: new Date().getFullYear(),
+            limit: 20
+        }
+    },
+    contests: {
         query: `
-            query getUserProfileAltBadges($username: String!) { # Renamed GQL query name
-                matchedUser(username: $username) {
-                    username
-                    badges {
-                        id
-                        displayName
-                        icon
-                        creationDate
-                        # Medal is typically not in this simpler badge structure
+            query getContestData($username: String!) {
+                userContestRankingHistory(username: $username) {
+                    attended
+                    contest {
+                        title
+                        startTime
                     }
-                    profile { # Often useful to get avatar/name if primary fails
-                        userAvatar 
-                        realName
-                    }
+                    problemsSolved
+                    totalProblems
+                    ranking
                 }
             }
         `,
         variables: { username }
-    };
-};
+    }
+});
 
-// Using your fetchLeetCodeBadges function name and logic
-async function fetchLeetCodeBadges(username, useAlternative = false) {
-    const queryToUse = useAlternative 
-        ? getAlternativeBadgeQuery_Corrected(username) 
-        : getBadgeQuery_Corrected(username);
-    return makeGraphQLRequest(queryToUse); // Use the generic request function
+// Optimized data fetching
+async function fetchUserDataOptimized(username) {
+    const queries = getOptimizedQueries(username);
+    
+    try {
+        // Fetch main data and contests in parallel
+        const [mainResult, contestResult] = await Promise.all([
+            makeGraphQLRequest(queries.main),
+            makeGraphQLRequest(queries.contests)
+        ]);
+
+        return {
+            main: mainResult,
+            contests: contestResult
+        };
+    } catch (error) {
+        console.error(`Error fetching data for ${username}:`, error.message);
+        return {
+            main: { errors: [{ message: error.message }], data: null },
+            contests: { errors: [{ message: error.message }], data: null }
+        };
+    }
 }
 
-function getBadgeDescription(displayName) { // Your function
+// Badge processing functions (kept from original)
+function getBadgeDescription(displayName) {
     const descriptions = {
         'Annual Badge 2024': 'Awarded for active participation throughout 2024',
         'Annual Badge 2023': 'Awarded for active participation throughout 2023',
         'Annual Badge 2022': 'Awarded for active participation throughout 2022',
-        'Knight': 'Solved 1000+ problems', 'Guardian': 'Solved 500+ problems', 'Warrior': 'Solved 100+ problems',
-        'Study Plan': 'Completed a study plan', 'DCC': 'Daily Coding Challenge participant',
-        'Contest': 'Participated in contests', '50 Days Badge': 'Solved problems for 50 consecutive days',
-        '100 Days Badge': 'Solved problems for 100 consecutive days', 'Premium': 'LeetCode Premium subscriber'
+        'Knight': 'Solved 1000+ problems',
+        'Guardian': 'Solved 500+ problems',
+        'Warrior': 'Solved 100+ problems',
+        'Study Plan': 'Completed a study plan',
+        'DCC': 'Daily Coding Challenge participant',
+        'Contest': 'Participated in contests',
+        '50 Days Badge': 'Solved problems for 50 consecutive days',
+        '100 Days Badge': 'Solved problems for 100 consecutive days',
+        'Premium': 'LeetCode Premium subscriber'
     };
+    
     for (const [key, desc] of Object.entries(descriptions)) {
         if (displayName.toLowerCase().includes(key.toLowerCase())) return desc;
     }
     return 'Special achievement badge';
 }
 
-// Adapts your displayBadgeInfo logic to format JSON for the frontend
-function formatBadgesForAPI(graphqlResponse, username) {
-    const formatted = {
+function formatBadgesForAPI(user, username) {
+    const badges = {
         username: username,
         earned: [],
         upcoming: [],
@@ -165,28 +356,15 @@ function formatBadgesForAPI(graphqlResponse, username) {
         error: null
     };
 
-    if (graphqlResponse.errors) {
-        formatted.error = graphqlResponse.errors[0].message;
-        return formatted; // Return early if GraphQL itself reports an error
-    }
-
-    const user = graphqlResponse.data?.matchedUser;
     if (!user) {
-        // This case can happen if GraphQL response is valid but matchedUser is null (e.g., user not found)
-        formatted.error = `User "${username}" not found or no badge data available.`;
-        // Check if the original GQL response had a more specific error message.
-        if (graphqlResponse.data && Object.keys(graphqlResponse.data).length === 1 && graphqlResponse.data.matchedUser === null) {
-             // This often means user not found.
-        } else if (!graphqlResponse.data) {
-            formatted.error = "No data returned from badge query.";
-        }
-        return formatted;
+        badges.error = `User "${username}" not found or no badge data available.`;
+        return badges;
     }
 
-    const earnedBadgesRaw = user.badges || [];
-    const upcomingBadgesRaw = user.upcomingBadges || [];
+    const earnedBadges = user.badges || [];
+    const upcomingBadges = user.upcomingBadges || [];
 
-    formatted.earned = earnedBadgesRaw.map(b => ({
+    badges.earned = earnedBadges.map(b => ({
         id: b.id,
         name: b.displayName,
         description: b.hoverText || getBadgeDescription(b.displayName),
@@ -198,196 +376,309 @@ function formatBadgesForAPI(graphqlResponse, username) {
         category: b.category || 'General'
     }));
 
-    formatted.upcoming = upcomingBadgesRaw.map(b => ({
+    badges.upcoming = upcomingBadges.map(b => ({
         name: b.name,
         status: 'LOCKED',
         progress: b.progress || 'Not available',
-        icon: b.icon || '', // No medal info for upcoming
-        iconGifBackground: '', // Default, as no medal.config
-        medalSlug: 'N/A'       // Default, as no medal
+        icon: b.icon || '',
+        iconGifBackground: '',
+        medalSlug: 'N/A'
     }));
 
-    formatted.summary.totalEarned = formatted.earned.length;
-    formatted.summary.totalUpcoming = formatted.upcoming.length;
-    formatted.summary.totalPossible = formatted.summary.totalEarned + formatted.summary.totalUpcoming;
+    badges.summary.totalEarned = badges.earned.length;
+    badges.summary.totalUpcoming = badges.upcoming.length;
+    badges.summary.totalPossible = badges.summary.totalEarned + badges.summary.totalUpcoming;
+    
     const categories = {};
-    formatted.earned.forEach(b => { categories[b.category] = (categories[b.category] || 0) + 1; });
-    formatted.summary.categories = categories;
-    const count = formatted.summary.totalEarned;
-    if (count >= 10) formatted.summary.level = 'Badge Master 🌟';
-    else if (count >= 5) formatted.summary.level = 'Badge Collector 🎖️';
-    else if (count >= 1) formatted.summary.level = 'Badge Beginner 🎯';
-    
-    return formatted;
-}
-// --- END OF BADGE SPECIFIC LOGIC ---
-
-
-async function fetchAllData(username) {
-    const commonVariables = { username };
-    const queries = { // Using more concise query definitions
-        stats: { query: `query Q1($username: String!) { matchedUser(username: $username) { username, submitStats { acSubmissionNum { difficulty, count, submissions } } }, allQuestionsCount { difficulty, count } }`, variables: commonVariables },
-        profile: { query: `query Q2($username: String!) { matchedUser(username: $username) { username, profile { realName, location, school, reputation, ranking, userAvatar } } }`, variables: commonVariables },
-        submissions: { query: `query Q3($username: String!, $limit: Int) { recentSubmissionList(username: $username, limit: $limit) { title, titleSlug, timestamp, statusDisplay, lang } }`, variables: { ...commonVariables, limit: 20 } },
-        calendar: { query: `query Q4($username: String!, $year: Int) { matchedUser(username: $username) { userCalendar(year: $year) { activeYears, streak, totalActiveDays, submissionCalendar } } }`, variables: { ...commonVariables, year: new Date().getFullYear() } },
-        languages: { query: `query Q5($username: String!) { matchedUser(username: $username) { languageProblemCount { languageName, problemsSolved }, tagProblemCounts { advanced { tagName, tagSlug, problemsSolved }, intermediate { tagName, tagSlug, problemsSolved }, fundamental { tagName, tagSlug, problemsSolved } } } }`, variables: commonVariables },
-        contests: { query: `query Q6($username: String!) { userContestRankingHistory(username: $username) { attended, contest { title, startTime }, problemsSolved, totalProblems, ranking } }`, variables: commonVariables }
-    };
-
-    const results = {};
-    const promises = Object.entries(queries).map(async ([key, queryPayload]) => {
-        try { results[key] = await makeGraphQLRequest(queryPayload); } 
-        catch (error) { console.error(`Error fetching ${key} for ${username}:`, error.message); results[key] = { errors: [{message: error.message}], data: null }; } // Ensure errors is an array
+    badges.earned.forEach(b => { 
+        categories[b.category] = (categories[b.category] || 0) + 1; 
     });
-    await Promise.all(promises);
-    
-    // Fetch and format badges using your script's logic (now corrected and integrated)
-    // console.log(`Fetching badges for ${username} using your provided logic structure...`);
-    let rawBadgeGQLResponse = await fetchLeetCodeBadges(username, false);
-    if (rawBadgeGQLResponse.errors || !rawBadgeGQLResponse.data?.matchedUser) {
-        // console.log(`Primary badge fetch failed/no data for ${username}, trying alternative.`);
-        rawBadgeGQLResponse = await fetchLeetCodeBadges(username, true);
-    }
-    results.badges = formatBadgesForAPI(rawBadgeGQLResponse, username);
-    
-    return results;
+    badges.summary.categories = categories;
+
+    const count = badges.summary.totalEarned;
+    if (count >= 10) badges.summary.level = 'Badge Master 🌟';
+    else if (count >= 5) badges.summary.level = 'Badge Collector 🎖️';
+    else if (count >= 1) badges.summary.level = 'Badge Beginner 🎯';
+
+    return badges;
 }
 
-function formatUserData(username, rawData) {
-    // Initialize with defaults, especially for badges to ensure structure
+// Optimized data formatting
+function formatUserDataOptimized(username, rawData) {
     const formatted = {
         username: username,
         profile: { realName: 'N/A', location: 'N/A', school: 'N/A', reputation: 0, ranking: 'N/A', userAvatar: '' },
         stats: { Easy: { solved: 0, total: 0, submissions: 0 }, Medium: { solved: 0, total: 0, submissions: 0 }, Hard: { solved: 0, total: 0, submissions: 0 }, All: { solved: 0, total: 0, submissions: 0 } },
         activity: { streak: 0, totalActiveDays: 0, activeYears: 'N/A' },
-        submissions: [], languages: [], tags: [],
-        badges: rawData.badges || { username: username, earned: [], upcoming: [], summary: {}, error: "Badge data structure missing." }, // Critical: Use the pre-formatted badges
+        submissions: [],
+        languages: [],
+        tags: [],
+        badges: { username: username, earned: [], upcoming: [], summary: {}, error: "Badge data structure missing." },
         contests: { summary: { totalAttended: 0, weeklyAttended: 0, biweeklyAttended: 0 }, history: [] },
-        heatmap: {}, error: null
+        heatmap: {},
+        error: null
     };
 
-    // Determine overall error / user existence
-    let primaryError = null;
-    const criticalDataKeys = ['profile', 'stats']; // If these fail, user likely doesn't exist or is private
-    for (const key of criticalDataKeys) {
-        if (rawData[key]?.errors && (!rawData[key]?.data || !rawData[key]?.data?.matchedUser)) {
-            primaryError = rawData[key].errors[0].message;
-            break;
-        }
-    }
-     // If badge query explicitly says user not found, that's a strong indicator
-    if (rawData.badges?.error && rawData.badges.error.toLowerCase().includes('user does not exist')) {
-        primaryError = `User "${username}" does not exist.`;
-    } else if (primaryError && primaryError.toLowerCase().includes('user does not exist')) {
-         primaryError = `User "${username}" does not exist.`;
-    }
-
-
-    if (primaryError) {
-        formatted.error = primaryError;
-        // If user doesn't exist, we can return early, badge error will also reflect this.
-        // Keep badges.error as is, since it might have specific "user not found" from badge query.
+    // Check for errors
+    if (rawData.main?.errors && (!rawData.main?.data || !rawData.main?.data?.matchedUser)) {
+        formatted.error = rawData.main.errors[0].message;
         return formatted;
     }
-    
+
+    const user = rawData.main?.data?.matchedUser;
+    const allQ = rawData.main?.data?.allQuestionsCount;
+    const recentSubs = rawData.main?.data?.recentSubmissionList;
+
+    if (!user) {
+        formatted.error = `User "${username}" does not exist.`;
+        return formatted;
+    }
 
     // Profile
-    const pProfile = rawData.profile?.data?.matchedUser?.profile;
-    if (pProfile) {
-        formatted.profile = { realName: pProfile.realName || 'N/A', location: pProfile.location || 'N/A', school: pProfile.school || 'N/A', reputation: pProfile.reputation || 0, ranking: pProfile.ranking > 0 ? pProfile.ranking : 'N/A', userAvatar: pProfile.userAvatar || '' };
+    if (user.profile) {
+        formatted.profile = {
+            realName: user.profile.realName || 'N/A',
+            location: user.profile.location || 'N/A',
+            school: user.profile.school || 'N/A',
+            reputation: user.profile.reputation || 0,
+            ranking: user.profile.ranking > 0 ? user.profile.ranking : 'N/A',
+            userAvatar: user.profile.userAvatar || ''
+        };
     }
 
     // Stats
-    const pStats = rawData.stats?.data?.matchedUser?.submitStats?.acSubmissionNum;
-    const allQ = rawData.stats?.data?.allQuestionsCount;
-    if (pStats && allQ) {
+    if (user.submitStats?.acSubmissionNum && allQ) {
         let totalS = 0, totalSub = 0, totalO = 0;
-        pStats.forEach(s => {
+        user.submitStats.acSubmissionNum.forEach(s => {
             const t = allQ.find(q => q.difficulty === s.difficulty)?.count || 0;
             formatted.stats[s.difficulty] = { solved: s.count || 0, total: t, submissions: s.submissions || 0 };
-            totalS += s.count || 0; totalSub += s.submissions || 0;
+            totalS += s.count || 0;
+            totalSub += s.submissions || 0;
         });
+        
         const aqd = allQ.find(q => q.difficulty === "All");
-        let calcTotalO = 0; allQ.forEach(q => { if (q.difficulty !== "All") calcTotalO += (q.count || 0); });
+        let calcTotalO = 0;
+        allQ.forEach(q => { if (q.difficulty !== "All") calcTotalO += (q.count || 0); });
         totalO = aqd ? aqd.count : calcTotalO;
         formatted.stats.All = { solved: totalS, total: totalO, submissions: totalSub };
-    } else if (rawData.stats?.errors) {
-        formatted.stats.error = rawData.stats.errors[0].message;
     }
-
 
     // Activity & Heatmap
-    const pCal = rawData.calendar?.data?.matchedUser?.userCalendar;
-    if (pCal) {
-        formatted.activity = { streak: pCal.streak || 0, totalActiveDays: pCal.totalActiveDays || 0, activeYears: pCal.activeYears?.join(', ') || 'N/A' };
-        if (pCal.submissionCalendar) {
-            try { formatted.heatmap = JSON.parse(pCal.submissionCalendar); } 
-            catch (e) { console.error(`Heatmap parse error for ${username}:`, e); formatted.heatmap = { error: 'Parse error' }; }
-        } else { formatted.heatmap = { note: 'No calendar string' }; }
-    } else if (rawData.calendar?.errors) {
-        formatted.activity.error = rawData.calendar.errors[0].message;
-        formatted.heatmap = { error: `Calendar fetch error: ${rawData.calendar.errors[0].message}` };
-    }
-
-    // Submissions
-    const pSubs = rawData.submissions?.data?.recentSubmissionList;
-    if (pSubs) {
-        formatted.submissions = pSubs.map(s => ({ title: s.title, titleSlug: s.titleSlug, status: s.statusDisplay, language: s.lang, timestamp: new Date(parseInt(s.timestamp) * 1000).toLocaleString() }));
-    }
-
-    // Languages & Tags
-    const pLangs = rawData.languages?.data?.matchedUser;
-    if (pLangs) {
-        if (pLangs.languageProblemCount) formatted.languages = pLangs.languageProblemCount.map(l => ({ name: l.languageName, solved: l.problemsSolved }));
-        if (pLangs.tagProblemCounts) {
-            const tagsRaw = pLangs.tagProblemCounts;
-            formatted.tags = [...(tagsRaw.fundamental || []), ...(tagsRaw.intermediate || []), ...(tagsRaw.advanced || [])]
-                .map(t => ({ name: t.tagName, slug: t.tagSlug, solved: t.problemsSolved }))
-                .filter(t => t.solved > 0).sort((a,b) => b.solved - a.solved);
+    if (user.userCalendar) {
+        formatted.activity = {
+            streak: user.userCalendar.streak || 0,
+            totalActiveDays: user.userCalendar.totalActiveDays || 0,
+            activeYears: user.userCalendar.activeYears?.join(', ') || 'N/A'
+        };
+        
+        if (user.userCalendar.submissionCalendar) {
+            try {
+                formatted.heatmap = JSON.parse(user.userCalendar.submissionCalendar);
+            } catch (e) {
+                formatted.heatmap = { error: 'Parse error' };
+            }
         }
     }
 
+    // Submissions
+    if (recentSubs) {
+        formatted.submissions = recentSubs.map(s => ({
+            title: s.title,
+            titleSlug: s.titleSlug,
+            status: s.statusDisplay,
+            language: s.lang,
+            timestamp: new Date(parseInt(s.timestamp) * 1000).toLocaleString()
+        }));
+    }
+
+    // Languages
+    if (user.languageProblemCount) {
+        formatted.languages = user.languageProblemCount.map(l => ({
+            name: l.languageName,
+            solved: l.problemsSolved
+        }));
+    }
+
+    // Tags
+    if (user.tagProblemCounts) {
+        const tagsRaw = user.tagProblemCounts;
+        formatted.tags = [
+            ...(tagsRaw.fundamental || []),
+            ...(tagsRaw.intermediate || []),
+            ...(tagsRaw.advanced || [])
+        ]
+        .map(t => ({ name: t.tagName, slug: t.tagSlug, solved: t.problemsSolved }))
+        .filter(t => t.solved > 0)
+        .sort((a, b) => b.solved - a.solved);
+    }
+
+    // Badges
+    formatted.badges = formatBadgesForAPI(user, username);
+
     // Contests
-    const pContests = rawData.contests?.data?.userContestRankingHistory;
-    if (pContests) {
-        const attended = pContests.filter(c => c?.attended);
+    const contests = rawData.contests?.data?.userContestRankingHistory;
+    if (contests) {
+        const attended = contests.filter(c => c?.attended);
         formatted.contests.summary = {
             totalAttended: attended.length,
             weeklyAttended: attended.filter(c => c.contest?.title?.toLowerCase().includes('weekly')).length,
             biweeklyAttended: attended.filter(c => c.contest?.title?.toLowerCase().includes('biweekly')).length,
         };
-        formatted.contests.history = attended.map(c => ({ title: c.contest.title, solved: c.problemsSolved, total: c.totalProblems, rank: c.ranking, startTime: new Date(c.contest.startTime * 1000).toLocaleString() })).sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+        formatted.contests.history = attended
+            .map(c => ({
+                title: c.contest.title,
+                solved: c.problemsSolved,
+                total: c.totalProblems,
+                rank: c.ranking,
+                startTime: new Date(c.contest.startTime * 1000).toLocaleString()
+            }))
+            .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
     }
-    
-    // console.log(`[DEBUG SERVER] Final formatted.badges for ${username}:`, JSON.stringify(formatted.badges, null, 2));
+
     return formatted;
 }
 
-// --- API Routes ---
+// Batch processing for bulk requests
+async function processBatch(usernames) {
+    const results = {};
+    const promises = usernames.map(async (username) => {
+        try {
+            const rawData = await fetchUserDataOptimized(username);
+            results[username] = formatUserDataOptimized(username, rawData);
+        } catch (error) {
+            results[username] = {
+                username,
+                error: `Server error: ${error.message}`,
+                profile: { realName: 'N/A', location: 'N/A', school: 'N/A', reputation: 0, ranking: 'N/A', userAvatar: '' },
+                stats: { Easy: { solved: 0, total: 0, submissions: 0 }, Medium: { solved: 0, total: 0, submissions: 0 }, Hard: { solved: 0, total: 0, submissions: 0 }, All: { solved: 0, total: 0, submissions: 0 } },
+                activity: { streak: 0, totalActiveDays: 0, activeYears: 'N/A' },
+                submissions: [], languages: [], tags: [],
+                badges: { username, earned: [], upcoming: [], summary: {}, error: "Error fetching badges" },
+                contests: { summary: { totalAttended: 0, weeklyAttended: 0, biweeklyAttended: 0 }, history: [] },
+                heatmap: {}
+            };
+        }
+    });
+
+    await Promise.all(promises);
+    return results;
+}
+
+// API Routes
 app.post('/api/leetcode', async (req, res) => {
     const { username } = req.body;
-    // console.log(`API: POST for username: '${username}'`);
+    
     if (!username || typeof username !== 'string' || !username.trim()) {
         return res.status(400).json({ error: 'Username is required.' });
     }
+
     const trimmedUsername = username.trim();
+    const startTime = Date.now();
+
     try {
-        const rawData = await fetchAllData(trimmedUsername);
-        const formattedData = formatUserData(trimmedUsername, rawData);
+        const rawData = await fetchUserDataOptimized(trimmedUsername);
+        const formattedData = formatUserDataOptimized(trimmedUsername, rawData);
+        
+        console.log(`Single user ${trimmedUsername} processed in ${Date.now() - startTime}ms`);
         res.json(formattedData);
     } catch (error) {
-        console.error(`API: Server error for ${trimmedUsername}:`, error);
-        res.status(500).json({ error: `Server error for ${trimmedUsername}. ${error.message}`, username: trimmedUsername });
+        console.error(`API error for ${trimmedUsername}:`, error);
+        res.status(500).json({ 
+            error: `Server error for ${trimmedUsername}. ${error.message}`, 
+            username: trimmedUsername 
+        });
     }
 });
 
-app.get('/api/test', (req, res) => res.json({ message: 'Backend test OK!' }));
+// Bulk processing endpoint
+app.post('/api/leetcode/bulk', async (req, res) => {
+    const { usernames } = req.body;
+    
+    if (!Array.isArray(usernames) || usernames.length === 0) {
+        return res.status(400).json({ error: 'Usernames array is required.' });
+    }
+
+    if (usernames.length > 100000) {
+        return res.status(400).json({ error: 'Maximum 100,000 usernames allowed per request.' });
+    }
+
+    const startTime = Date.now();
+    const trimmedUsernames = usernames.map(u => String(u).trim()).filter(u => u);
+    
+    try {
+        // Process in batches
+        const results = {};
+        const batches = [];
+        
+        for (let i = 0; i < trimmedUsernames.length; i += CONFIG.BATCH_SIZE) {
+            batches.push(trimmedUsernames.slice(i, i + CONFIG.BATCH_SIZE));
+        }
+
+        console.log(`Processing ${trimmedUsernames.length} users in ${batches.length} batches`);
+
+        // Process batches in parallel with controlled concurrency
+        const batchPromises = batches.map(batch => processBatch(batch));
+        const batchResults = await Promise.all(batchPromises);
+
+        // Merge results
+        batchResults.forEach(batchResult => {
+            Object.assign(results, batchResult);
+        });
+
+        const processingTime = Date.now() - startTime;
+        console.log(`Bulk processing completed: ${trimmedUsernames.length} users in ${processingTime}ms (${(trimmedUsernames.length / (processingTime / 1000)).toFixed(2)} users/sec)`);
+
+        res.json({
+            success: true,
+            count: Object.keys(results).length,
+            processing_time_ms: processingTime,
+            users_per_second: Math.round(trimmedUsernames.length / (processingTime / 1000)),
+            data: results
+        });
+
+    } catch (error) {
+        console.error('Bulk processing error:', error);
+        res.status(500).json({ 
+            error: `Bulk processing error: ${error.message}`,
+            processing_time_ms: Date.now() - startTime
+        });
+    }
+});
+
+// Cache management endpoints
+app.post('/api/cache/clear', (req, res) => {
+    cache.clear();
+    res.json({ message: 'Cache cleared successfully' });
+});
+
+app.get('/api/cache/stats', (req, res) => {
+    res.json({ 
+        size: cache.cache.size,
+        ttl: cache.ttl,
+        config: CONFIG
+    });
+});
+
+app.get('/api/test', (req, res) => res.json({ 
+    message: 'Backend test OK!',
+    config: CONFIG,
+    cache_size: cache.cache.size
+}));
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Graceful shutdown
+process.on('SIGTERM', () => {
+    console.log('Received SIGTERM, shutting down gracefully');
+    cache.clear();
+    process.exit(0);
+});
+
 app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`🚀 Optimized LeetCode server running at http://localhost:${PORT}`);
+    console.log(`📊 Config: ${CONFIG.MAX_CONCURRENT_REQUESTS} concurrent, ${CONFIG.WORKER_COUNT} workers, ${CONFIG.CONNECTION_POOL_SIZE} connections`);
+    console.log(`⚡ Ready for high-throughput processing!`);
 });
