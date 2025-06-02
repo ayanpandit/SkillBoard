@@ -27,14 +27,23 @@ export default function App() {
   );
 }*/
 import "./index.css";
-import LeetCodeProfileAnalyzer from './components/LeetCodeProfileAnalyzer'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import HomePage from "./components/Home";
+import LeetCodeLoader from "./components/leetcodeloder"; // Your LeetCode loader
+import CodeChefLoader from "./components/codechefloder";   // Your CodeChef loader
 
 function App() {
   return (
-    <div className="App">
-      <LeetCodeProfileAnalyzer />
-    </div>
-  )
+    <Router>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
+          <Route path="/codechefloder" element={<CodeChefLoader />} />
+        </Routes>
+      </div>
+    </Router>
+  );
 }
-export default App;
 
+export default App;
