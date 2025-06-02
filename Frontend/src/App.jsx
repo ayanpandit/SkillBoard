@@ -29,17 +29,19 @@ export default function App() {
 import "./index.css";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from "./components/Home";
-import LeetCodeLoader from "./components/leetcodeloder"; // Your LeetCode loader
-import CodeChefLoader from "./components/codechefloder";   // Your CodeChef loader
+import LeetCodeLoader from "./components/leetcodeloder";
+import CodeChefLoader from "./components/codechefloder";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/">
       <div className="App">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
           <Route path="/codechefloder" element={<CodeChefLoader />} />
+          {/* Add a catch-all route */}
+          <Route path="*" element={<HomePage />} />
         </Routes>
       </div>
     </Router>
