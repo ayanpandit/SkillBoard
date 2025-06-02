@@ -1,10 +1,10 @@
-import React from 'react';
 import bgImage from '../assets/bg.jpg';
 import { useNavigate } from 'react-router-dom';
 
 import { Code2, Trophy, Users, Calendar, Star, ExternalLink, TrendingUp, ChevronDown } from 'lucide-react';
 
 const HomePage = () => {
+    const navigate = useNavigate();
     const scrollToCards = () => {
         const cardsSection = document.getElementById('platforms-section');
         cardsSection?.scrollIntoView({
@@ -12,7 +12,7 @@ const HomePage = () => {
             block: 'start'
         });
     };
-    const navigate = useNavigate();
+    
 
     const platforms = [
         {
@@ -159,10 +159,10 @@ const HomePage = () => {
                                         onClick={() => {
                                             if (platform.id === 'codechef') {
                                                 // Navigate to CodeChef loader
-                                                window.location.href = '/codechefloder';
+                                                navigate('/codechefloder');
                                             } else if (platform.id === 'leetcode') {
                                                 // Navigate to LeetCode loader
-                                                window.location.href = '/LeetCodeProfileAnalyze';
+                                                navigate('/LeetCodeProfileAnalyze');
                                             }
                                         }}
                                         className={`w-full py-3 bg-gradient-to-r ${platform.color} text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300`}
