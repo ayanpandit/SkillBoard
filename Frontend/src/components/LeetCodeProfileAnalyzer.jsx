@@ -8,8 +8,17 @@ import {
   Download, Filter, RotateCcw
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:3000/api/leetcode';
-const API_BULK_URL = 'http://localhost:3000/api/leetcode/bulk'; // New bulk endpoint
+const IS_PRODUCTION = import.meta.env.PROD;
+
+const API_URL = IS_PRODUCTION 
+  ? 'https://leetcodebackend-zjtf.onrender.com/api/leetcode'
+  : 'http://localhost:3000/api/leetcode';
+
+const API_BULK_URL = IS_PRODUCTION
+  ? 'https://leetcodebackend-zjtf.onrender.com/api/leetcode/bulk'
+  : 'http://localhost:3000/api/leetcode/bulk';
+
+
 
 // StatCard, Section, getDifficultyColorText, getDifficultyColorBg components remain the same
 const StatCard = ({ title, value, icon, color = "text-sky-400" }) => (
