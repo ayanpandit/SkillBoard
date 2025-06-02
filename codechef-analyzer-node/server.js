@@ -184,8 +184,10 @@ const logger = {
 
 // --- CORS Configuration ---
 const allowedOrigins = [
-    "https://codechefprofileanalyzerbyayanpandit.onrender.com",
-    "http://localhost:5173", // Your React dev server
+    "https://skillboard-nit5.onrender.com/codechefloder",
+    "http://localhost:5173",
+    "https://skillboard-nit5.onrender.com",
+     // Your React dev server
     // Add any other origins you need
 ];
 app.use(cors({
