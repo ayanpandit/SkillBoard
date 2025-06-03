@@ -31,6 +31,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from "./components/Home";
 import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
+import About from "./components/About";
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
           <Route path="/codechefloder" element={<CodeChefLoader />} />
+          <Route path="/About" element={<About />} />
           {/* Add a catch-all route */}
           <Route path="*" element={<HomePage />} />
         </Routes>
