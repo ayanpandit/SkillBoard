@@ -1,22 +1,9 @@
 import bgImage from '../assets/bg.webp';
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-
-import { Code2, Trophy, Users, Calendar, Star, ExternalLink, TrendingUp, ChevronDown, Menu, X, Home, User, Phone, Briefcase } from 'lucide-react';
+import { Code2, Trophy, Users, Star, ExternalLink, ChevronDown } from 'lucide-react';
 
 const HomePage = () => {
     const navigate = useNavigate();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isScrolled, setIsScrolled] = useState(false);
-
-    // Handle scroll effect for navbar
-    useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 50);
-        };
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     const scrollToCards = () => {
         const cardsSection = document.getElementById('platforms-section');
@@ -25,13 +12,6 @@ const HomePage = () => {
             block: 'start'
         });
     };
-
-    const navItems = [
-        { name: 'Home', icon: Home, action: () => navigate('/') },
-        { name: 'About', icon: User, action: () => navigate('/About') },
-        { name: 'Services', icon: Briefcase, action: () => navigate('/services') },
-        { name: 'Contact', icon: Phone, action: () => navigate('/contact') },
-    ];
 
     const platforms = [
         {
@@ -79,117 +59,11 @@ const HomePage = () => {
     ];
 
     return (
-        <div className="min-h-screen relative">
-            {/* Static Background */}
+        <div className="min-h-screen relative">            {/* Static Background */}
             <div
                 className="fixed inset-0 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${bgImage})` }}
             ></div>
-
-            {/* Responsive Navbar - Adjust the spacing: top-4 left-8 right-8 (change these values to adjust spacing from all directions) */}
-            <nav className={`fixed top-9 left-12 right-12 z-50 transition-all duration-500 rounded-2xl ${
-                isScrolled 
-                    ? 'opacity-0 translate-y-[-100%] pointer-events-none' 
-                    : 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
-            }`}>
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-16 md:h-20">
-                        {/* Logo */}
-                        <div className="flex-shrink-0 cursor-pointer" onClick={() => navigate('/')}>
-                            <h1 className="text-2xl md:text-3xl font-bold">
-                                <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-                                    Skill
-                                </span>
-                                <span className="text-white">Board</span>
-                            </h1>
-                        </div>
-
-                        {/* Desktop Navigation */}
-                        <div className="hidden md:block">
-                            <div className="ml-10 flex items-baseline space-x-1">
-                                {navItems.map((item) => (
-                                    <button
-                                        key={item.name}
-                                        onClick={item.action}
-                                        className="group flex items-center px-4 py-2 rounded-full text-white hover:bg-white/10 transition-all duration-300 hover:scale-105"
-                                    >
-                                        <item.icon className="w-4 h-4 mr-2 group-hover:text-purple-400 transition-colors" />
-                                        <span className="font-medium group-hover:text-purple-400 transition-colors">
-                                            {item.name}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* CTA Button - Desktop */}
-                        <div className="hidden md:block">
-                            <button
-                                onClick={scrollToCards}
-                                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-full hover:from-purple-700 hover:to-pink-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-purple-500/25"
-                            >
-                                Get Started
-                            </button>
-                        </div>
-
-                        {/* Mobile menu button */}
-                        <div className="md:hidden">
-                            <button
-                                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                className="inline-flex items-center justify-center p-2 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
-                            >
-                                {isMenuOpen ? (
-                                    <X className="h-6 w-6" />
-                                ) : (
-                                    <Menu className="h-6 w-6" />
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Mobile Navigation Menu */}
-                <div className={`md:hidden transition-all duration-500 overflow-hidden ${
-                    isMenuOpen 
-                        ? 'max-h-96 opacity-100' 
-                        : 'max-h-0 opacity-0'
-                }`}>
-                    <div className="bg-black/40 backdrop-blur-lg border-t border-white/10 rounded-b-2xl">
-                        <div className="px-4 py-4 space-y-2">
-                            {navItems.map((item, index) => (
-                                <button
-                                    key={item.name}
-                                    onClick={() => {
-                                        item.action();
-                                        setIsMenuOpen(false);
-                                    }}
-                                    className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
-                                    style={{
-                                        animationDelay: `${index * 100}ms`,
-                                        animation: isMenuOpen ? 'slideInFromRight 0.5s ease-out forwards' : 'none'
-                                    }}
-                                >
-                                    <item.icon className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
-                                    <span className="font-medium group-hover:text-purple-400 transition-colors">
-                                        {item.name}
-                                    </span>
-                                </button>
-                            ))}
-                            <div className="pt-4 border-t border-white/10">
-                                <button
-                                    onClick={() => {
-                                        scrollToCards();
-                                        setIsMenuOpen(false);
-                                    }}
-                                    className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-300"
-                                >
-                                    Get Started
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
 
             {/* Scrollable Content */}
             <div className="relative z-10 min-h-screen">
@@ -304,10 +178,8 @@ const HomePage = () => {
                             </div>
                         </div>
                     </div>
-                </section>
-
-                {/* Footer */}
-                <footer className="mt-12 border-t border-slate-700 pt-8">
+                </section>                {/* Footer */}
+                <footer id="contact-section" className="mt-12 border-t border-slate-700 pt-8">
                     <div className="text-center space-y-6">
                         <div>
                             <h3 className="text-lg font-semibold mb-4 text-slate-300">Connect With Me</h3>
@@ -344,20 +216,6 @@ const HomePage = () => {
                     </div>
                 </footer>
             </div>
-
-            {/* Custom CSS for animations */}
-            <style jsx>{`
-                @keyframes slideInFromRight {
-                    from {
-                        opacity: 0;
-                        transform: translateX(100%);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateX(0);
-                    }
-                }
-            `}</style>
         </div>
     );
 };

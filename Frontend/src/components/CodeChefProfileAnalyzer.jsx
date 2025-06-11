@@ -593,8 +593,7 @@ const CodeChefProfileAnalyzer = () => {
     // Only small adjustments for consistency (e.g. title attributes on icons) might be added.
     return (
         <div className="min-h-screen bg-slate-900 text-slate-300 p-4 md:p-8">
-            <div className="container mx-auto max-w-full px-2">
-                <header className="text-center mb-8">
+            <div className="container mx-auto max-w-full px-2">                <header className="text-center mb-8 pt-24">
                     <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
                         CodeChef Profile Analyzer
                     </h1>
@@ -807,9 +806,8 @@ const CodeChefProfileAnalyzer = () => {
                         </div>
                     </div>
                 </div>
-            )}
-            <footer className="mt-12 border-t border-slate-700 pt-8">
-    <div className="text-center space-y-6">
+            )}            <footer id="contact-section" className="mt-12 border-t border-slate-700 pt-8">
+                <div className="text-center space-y-6">
         <div>
             <h3 className="text-lg font-semibold mb-4 text-slate-300">Connect With Me</h3>
             <div className="flex justify-center space-x-6">

@@ -32,11 +32,13 @@ import HomePage from "./components/Home";
 import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
 import About from "./components/About";
+import Navbar from "./components/Navbar";
 
 function App() {
   return (
     <Router basename="/">
       <div className="App">
+        <Navbar />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />

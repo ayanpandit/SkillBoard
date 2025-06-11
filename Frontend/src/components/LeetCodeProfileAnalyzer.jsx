@@ -1095,8 +1095,7 @@ function LeetCodeProfileAnalyzer() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8 font-sans">
-      <style jsx global>{`.pretty-scrollbar::-webkit-scrollbar {width:6px;height:6px;} .pretty-scrollbar::-webkit-scrollbar-track {background:transparent;} .pretty-scrollbar::-webkit-scrollbar-thumb {background:#475569;border-radius:10px;} .pretty-scrollbar::-webkit-scrollbar-thumb:hover {background:#334155;}`}</style>
-      <header className="text-center mb-8">
+      <style jsx global>{`.pretty-scrollbar::-webkit-scrollbar {width:6px;height:6px;} .pretty-scrollbar::-webkit-scrollbar-track {background:transparent;} .pretty-scrollbar::-webkit-scrollbar-thumb {background:#475569;border-radius:10px;} .pretty-scrollbar::-webkit-scrollbar-thumb:hover {background:#334155;}`}</style>      <header className="text-center mb-8 pt-24">
         <h1 className="text-4xl md:text-5xl font-bold text-sky-400">LeetCode Profile Analyzer</h1>
       </header>
       <div className="max-w-xl mx-auto mb-8 p-6 bg-slate-800 rounded-xl shadow-2xl">
@@ -1250,8 +1249,7 @@ function LeetCodeProfileAnalyzer() {
           <button onClick={() => setSelectedUser(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-100 transition-colors z-[110] p-1 rounded-full hover:bg-slate-700" aria-label="Close modal"><X size={24} /></button>
           <ModalContent user={selectedUser} />
         </div>
-      </div>)}
-      <footer className="mt-12 border-t border-slate-700 pt-8">
+      </div>)}      <footer id="contact-section" className="mt-12 border-t border-slate-700 pt-8">
         <div className="text-center space-y-6">
           <div>
             <h3 className="text-lg font-semibold mb-4 text-slate-300">Connect With Me</h3>
