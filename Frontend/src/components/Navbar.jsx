@@ -54,21 +54,33 @@ const Navbar = () => {
         { name: 'About', icon: User, action: () => navigate('/About') },        { name: 'Contact', icon: Phone, action: () => {
             const currentPath = window.location.pathname;
             const scrollToFooter = () => {
-                const footer = document.getElementById('contact-section');
-                if (footer) {
-                    footer.scrollIntoView({ behavior: 'smooth' });
-                }
+                // First try to scroll to the absolute bottom
+                window.scrollTo({
+                    top: document.documentElement.scrollHeight,
+                    behavior: 'smooth'
+                });
+                
+                // Then after a small delay, ensure we're at the contact section
+                setTimeout(() => {
+                    const footer = document.getElementById('contact-section');
+                    if (footer) {
+                        footer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                    }
+                }, 100);
             };
 
-            // If we're already on the current page, just scroll
-            scrollToFooter();
-
-            // If we're not on the homepage and clicking contact, first navigate then scroll
+            // If we're not on the homepage, navigate first then scroll
             if (currentPath !== '/') {
                 navigate('/');
-                // Wait for navigation to complete then scroll
-                setTimeout(scrollToFooter, 100);
+                // Wait for navigation and render to complete then scroll
+                setTimeout(scrollToFooter, 300);
+            } else {
+                // If we're already on the current page, just scroll
+                scrollToFooter();
             }
+            
+            // Close the mobile menu if it's open
+            setIsMenuOpen(false);
         }},
     ];
 
@@ -158,41 +170,59 @@ const Navbar = () => {
                 <div className="bg-black/40 backdrop-blur-lg border-t border-white/10 rounded-b-2xl">
                     <div className="px-4 py-4 space-y-2">
                         {navItems.map((item, index) => (
-                            <div key={item.name}>
-                                <button
-                                    onClick={() => item.isDropdown ? handleDropdownClick(item.name) : (item.action(), setIsMenuOpen(false))}
-                                    className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
-                                    style={{
-                                        animationDelay: `${index * 100}ms`,
-                                        animation: isMenuOpen ? 'slideInFromRight 0.5s ease-out forwards' : 'none'
-                                    }}
-                                >
-                                    <item.icon className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
-                                    <span className="font-medium group-hover:text-purple-400 transition-colors flex-1 text-left">
-                                        {item.name}
-                                    </span>
-                                    {item.isDropdown && (
-                                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openDropdown === item.name ? 'rotate-180' : ''}`} />
-                                    )}
-                                </button>
-                                
-                                {/* Mobile Dropdown Menu */}
-                                {item.isDropdown && openDropdown === item.name && (
-                                    <div className="pl-12 mt-2 space-y-2">
-                                        {item.subItems.map((subItem) => (
-                                            <button
-                                                key={subItem.name}
-                                                onClick={() => {
-                                                    subItem.action();
-                                                    setIsMenuOpen(false);
-                                                    setOpenDropdown('');
-                                                }}
-                                                className="w-full px-4 py-2 rounded-lg text-left text-white hover:bg-white/10 transition-colors duration-200"
-                                            >
-                                                {subItem.name}
-                                            </button>
-                                        ))}
-                                    </div>
+                            <div key={item.name}>                                {item.isDropdown ? (
+                                    <>
+                                        <button
+                                            onClick={() => handleDropdownClick(item.name)}
+                                            className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
+                                            style={{
+                                                animationDelay: `${index * 100}ms`,
+                                                animation: isMenuOpen ? 'slideInFromRight 0.5s ease-out forwards' : 'none'
+                                            }}
+                                        >
+                                            <item.icon className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
+                                            <span className="font-medium group-hover:text-purple-400 transition-colors flex-1 text-left">
+                                                {item.name}
+                                            </span>
+                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openDropdown === item.name ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        
+                                        {/* Mobile Dropdown Menu */}
+                                        <div className={`pl-12 mt-2 space-y-2 transition-all duration-300 ${openDropdown === item.name ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                                            {item.subItems.map((subItem) => (
+                                                <button
+                                                    key={subItem.name}
+                                                    onClick={() => {
+                                                        setIsMenuOpen(false);
+                                                        setOpenDropdown('');
+                                                        setTimeout(() => {
+                                                            subItem.action();
+                                                        }, 100);
+                                                    }}
+                                                    className="w-full px-4 py-2 rounded-lg text-left text-white hover:bg-white/10 transition-colors duration-200"
+                                                >
+                                                    {subItem.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            item.action();
+                                        }}
+                                        className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
+                                        style={{
+                                            animationDelay: `${index * 100}ms`,
+                                            animation: isMenuOpen ? 'slideInFromRight 0.5s ease-out forwards' : 'none'
+                                        }}
+                                    >
+                                        <item.icon className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
+                                        <span className="font-medium group-hover:text-purple-400 transition-colors flex-1 text-left">
+                                            {item.name}
+                                        </span>
+                                    </button>
                                 )}
                             </div>
                         ))}
