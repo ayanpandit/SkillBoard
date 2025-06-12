@@ -1,17 +1,30 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Menu, X, Home, User, Phone, Briefcase, ChevronDown } from 'lucide-react';
 
 const Navbar = () => {
     const navigate = useNavigate();
+    const location = useLocation(); // Get location
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [openDropdown, setOpenDropdown] = useState('');
     const [prevScrollPos, setPrevScrollPos] = useState(0);
     const [visible, setVisible] = useState(true);
 
+    const isAnalyzerPage = location.pathname === '/codechefloder' || location.pathname === '/LeetCodeProfileAnalyze';
+
     // Handle scroll effect for navbar
     useEffect(() => {
+        if (isAnalyzerPage) {
+            // For analyzer pages, navbar is always visible and not in "scrolled" state.
+            // It will scroll with the page naturally due to className changes.
+            setVisible(true);
+            setIsScrolled(false); // Keep a consistent base appearance
+            // No scroll listener needed for fixed behavior on these pages.
+            return () => {}; // Return an empty cleanup function
+        }
+
+        // This part only runs for non-analyzer pages (fixed navbar behavior)
         const handleScroll = () => {
             const currentScrollPos = window.scrollY;
             
@@ -19,7 +32,7 @@ const Navbar = () => {
             if (currentScrollPos === 0) {
                 setVisible(true);
                 setIsScrolled(false);
-                setPrevScrollPos(currentScrollPos);
+                setPrevScrollPos(currentScrollPos); // Update prevScrollPos here
                 return;
             }
 
@@ -31,7 +44,7 @@ const Navbar = () => {
 
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [prevScrollPos]);
+    }, [prevScrollPos, isAnalyzerPage]); // Add isAnalyzerPage to dependency array
 
     const handleDropdownClick = (name) => {
         setOpenDropdown(openDropdown === name ? '' : name);
@@ -101,15 +114,19 @@ const Navbar = () => {
     ];
 
     return (
-        <nav className={`fixed top-9 left-12 right-12 z-50 transition-all duration-500 rounded-2xl ${
-            !visible
-                ? 'opacity-0 translate-y-[-100%] pointer-events-none'
-                : isScrolled
-                    ? 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
-                    : 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
-        }`}>
+        <nav className={
+            isAnalyzerPage
+                ? "relative rounded-2xl  backdrop-blur-lg shadow-2xl border border-white/20 mt-4 mb-0 md:mt-6 md:mb-0 lg:mt-8 lg:mb-0 mx-12" // Set bottom margins to 0
+                : `fixed top-9 left-12 right-12 z-50 transition-all duration-500 rounded-2xl ${
+                    !visible
+                        ? 'opacity-0 translate-y-[-100%] pointer-events-none'
+                        : isScrolled
+                            ? 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
+                            : 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
+                }` // Existing classes for fixed/auto-hiding navbar
+        }>
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center justify-between h-16 md:h-20">
+                <div className={`flex items-center justify-between ${isAnalyzerPage ? 'h-16 md:h-20' : 'h-16 md:h-20'}`}> {/* Reverted height on analyzer pages */}
                     {/* Logo */}
                     <div className="flex-shrink-0 cursor-pointer" onClick={() => navigate('/')}>
                         <h1 className="text-2xl md:text-3xl font-bold">
