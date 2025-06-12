@@ -7,15 +7,31 @@ const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [openDropdown, setOpenDropdown] = useState('');
+    const [prevScrollPos, setPrevScrollPos] = useState(0);
+    const [visible, setVisible] = useState(true);
 
     // Handle scroll effect for navbar
     useEffect(() => {
         const handleScroll = () => {
-            setIsScrolled(window.scrollY > 50);
+            const currentScrollPos = window.scrollY;
+            
+            // Show navbar at the very top of the page
+            if (currentScrollPos === 0) {
+                setVisible(true);
+                setIsScrolled(false);
+                setPrevScrollPos(currentScrollPos);
+                return;
+            }
+
+            // Determine scroll direction and visibility
+            setVisible(prevScrollPos > currentScrollPos || currentScrollPos < 10);
+            setIsScrolled(currentScrollPos > 50);
+            setPrevScrollPos(currentScrollPos);
         };
+
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+    }, [prevScrollPos]);
 
     const handleDropdownClick = (name) => {
         setOpenDropdown(openDropdown === name ? '' : name);
@@ -86,9 +102,11 @@ const Navbar = () => {
 
     return (
         <nav className={`fixed top-9 left-12 right-12 z-50 transition-all duration-500 rounded-2xl ${
-            isScrolled 
-                ? 'opacity-0 translate-y-[-100%] pointer-events-none' 
-                : 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
+            !visible
+                ? 'opacity-0 translate-y-[-100%] pointer-events-none'
+                : isScrolled
+                    ? 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
+                    : 'bg-black/20 backdrop-blur-lg shadow-2xl border border-white/20 opacity-100 translate-y-0'
         }`}>
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16 md:h-20">
