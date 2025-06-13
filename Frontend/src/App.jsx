@@ -33,6 +33,9 @@ import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
 import About from "./components/About";
 import Navbar from "./components/Navbar";
+import Profile from "./components/Profile"; // Import Profile component
+import { useAuth } from "./context/AuthContext"; // Import useAuth
+import { Navigate } from 'react-router-dom'; // Import Navigate for protected routes
 
 // Helper component to apply conditional background
 const AppWrapper = () => {
@@ -40,19 +43,40 @@ const AppWrapper = () => {
   const isAnalyzerPage = location.pathname === '/codechefloder' || location.pathname === '/LeetCodeProfileAnalyze';
 
   return (
-    <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : ''}`}>
+    <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : 'bg-gray-900'}`}>
       <Navbar />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
         <Route path="/codechefloder" element={<CodeChefLoader />} />
         <Route path="/About" element={<About />} />
+        <Route 
+          path="/profile"
+          element={<ProtectedRoute><Profile /></ProtectedRoute>}
+        />
         {/* Add a catch-all route */}
         <Route path="*" element={<HomePage />} />
       </Routes>
     </div>
   );
 }
+
+
+// ProtectedRoute component
+const ProtectedRoute = ({ children }) => {
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    // You can return a loading spinner here if you want
+    return <div className="text-center text-white py-10">Loading...</div>;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
