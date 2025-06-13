@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, Fragment } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -84,7 +84,7 @@ const defaultErrorUserStructure = (username, errorMessage) => ({
 });
 
 
-function LeetCodeProfileAnalyzer() {
+function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
   const [usernameInput, setUsernameInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,16 +93,73 @@ function LeetCodeProfileAnalyzer() {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [totalToProcess, setTotalToProcess] = useState(0);
   const [selectedHeatmapYear, setSelectedHeatmapYear] = useState(new Date().getFullYear());
+  const [lastSearchedUsernames, setLastSearchedUsernames] = useState([]);
+  const [lastSearchedFile, setLastSearchedFile] = useState(null);
 
   const [sortConfig, setSortConfig] = useState({ key: 'sno', direction: 'ascending' });
   const [filterUsername, setFilterUsername] = useState('');
   const [filterRealName, setFilterRealName] = useState('');
   const [weeklyContestQuery, setWeeklyContestQuery] = useState('');
+  
+  // Process initial file URL if provided
+  useEffect(() => {
+    const processInitialFile = async () => {
+      if (initialFileUrl && !lastSearchedFile) {
+        try {
+          setIsLoading(true);
+          setError('');
+          
+          // Fetch the file content from the URL
+          const response = await fetch(initialFileUrl);
+          const blob = await response.blob();
+          
+          // Create a File object from the blob
+          const fileFromBlob = new File([blob], initialFileName || 'uploaded_file.csv', { 
+            type: blob.type || 'text/csv' 
+          });
+          
+          // Set as last searched file
+          setLastSearchedFile(fileFromBlob);
+          
+          // Process the file similar to handleBulkSearch
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const fileData = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(fileData, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+              const usernames = json.flat().map(name => String(name || '').trim()).filter(name => name && name.length > 0);
+              
+              if (usernames.length === 0) {
+                setError('No valid usernames found in the file.');
+                setIsLoading(false);
+                return;
+              }
+              
+              setLastSearchedUsernames(usernames);
+              await processUsernames(usernames);
+              
+            } catch (err) {
+              console.error("File processing error:", err);
+              setError('Failed to process file: ' + (err.message || 'Unknown error'));
+              setIsLoading(false);
+            }
+          };
+          reader.readAsArrayBuffer(fileFromBlob);
+          
+        } catch (error) {
+          console.error("Error processing initial file:", error);
+          setError(`Error processing file: ${error.message || 'Unknown error'}`);
+          setIsLoading(false);
+        }
+      }
+    };
+      processInitialFile();
+  }, [initialFileUrl, initialFileName]);
   const [biweeklyContestQuery, setBiweeklyContestQuery] = useState('');
   const [contestHighlights, setContestHighlights] = useState({});
-  const [lastSearchedUsernames, setLastSearchedUsernames] = useState([]);
-  const [lastSearchedFile, setLastSearchedFile] = useState(null);
-
 
   // For fetching a single user's data
   const fetchSingleUserData = useCallback(async (username) => {

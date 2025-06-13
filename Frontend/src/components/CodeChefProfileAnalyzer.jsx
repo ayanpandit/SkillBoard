@@ -141,31 +141,47 @@ const TableRow = memo(({ item, index, columns, specificContestSearch, checkConte
 });
 
 
-const CodeChefProfileAnalyzer = () => {
-    // States remain the same
+const CodeChefProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
     const [singleUsername, setSingleUsername] = useState('');
-    const [file, setFile] = useState(null);
-    const [fileName, setFileName] = useState('');
     const [allResults, setAllResults] = useState([]);
     const [filteredResults, setFilteredResults] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
-    const [showModal, setShowModal] = useState(false);
-    const [selectedUser, setSelectedUser] = useState(null);
     const [usernameSearch, setUsernameSearch] = useState('');
     const [specificContestSearch, setSpecificContestSearch] = useState('');
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [showModal, setShowModal] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+    const [filters, setFilters] = useState({
+        searchQuery: '',
+        minRating: '',
+        maxRating: '',
+        minProblems: '',
+        maxProblems: '',
+        onlyCheat: false,
+        statusFilter: 'all',    });
+    const [showFilters, setShowFilters] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [notification, setNotification] = useState({ message: '', type: '' });
+    const [errorMessage, setErrorMessage] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [file, setFile] = useState(null);
+    const [fileName, setFileName] = useState('');
+    const [modalContent, setModalContent] = useState(null);
+    const [showContextMenu, setShowContextMenu] = useState(false);
+    const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+    const [contextMenuTarget, setContextMenuTarget] = useState(null);
+    const notificationTimeoutRef = useRef(null);
     const fileInputRef = useRef(null);
-
+    const contextMenuRef = useRef(null);// Show notifications with auto-dismiss
     const showNotification = useCallback((message, type = 'error', duration = 5000) => {
-        if (type === 'error') setErrorMessage(message);
-        else setSuccessMessage(message);
-        setTimeout(() => {
-            setErrorMessage('');
-            setSuccessMessage('');
+        setNotification({ message, type });
+        
+        if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+        }
+          notificationTimeoutRef.current = setTimeout(() => {
+            setNotification({ message: '', type: '' });
         }, duration);
-    }, []);
+    });
 
     const getStarBadge = useCallback((starsStrInput) => {
         const starsStr = String(starsStrInput); // Ensure it's a string
@@ -185,18 +201,14 @@ const CodeChefProfileAnalyzer = () => {
         else if (starCount >= 6) colorClass = 'text-red-500';    // For 6 and 7 stars
 
         return (
-            <span className={`font-bold ${colorClass} flex items-center`}>
-                {firstChar} <HeroStarIcon className="h-4 w-4 ml-1" />
+            <span className={`font-bold ${colorClass} flex items-center`}>                {firstChar} <HeroStarIcon className="h-4 w-4 ml-1" />
             </span>
         );
-    }, []);
+    });
 
-    // fetchData, searchSingleUser, processBulkUpload, handleFileChange remain the same as last version
-
+    // Function to fetch data from the API
     const fetchData = useCallback(async (url, options = {}) => {
         setLoading(true);
-        setErrorMessage('');
-        setSuccessMessage('');
         try {
             const response = await fetch(url, options);
             const contentType = response.headers.get("content-type");
@@ -218,12 +230,11 @@ const CodeChefProfileAnalyzer = () => {
             return await response.json();
         } catch (error) {
             console.error("Fetch error:", error);
-            showNotification(`Error: ${error.message}`, 'error');
-            return null;
-        } finally {
+            setNotification({ message: `Error: ${error.message}`, type: 'error' });
+            return null;        } finally {
             setLoading(false);
         }
-    }, [showNotification]);
+    });
 
     const searchSingleUser = useCallback(async () => {
         if (!singleUsername.trim()) {
@@ -395,14 +406,74 @@ const CodeChefProfileAnalyzer = () => {
         if (sortConfig.key === key && sortConfig.direction === 'ascending') {
             direction = 'descending';
         }
-        setSortConfig({ key, direction });
-    }, [sortConfig]);
-
+        setSortConfig({ key, direction });    }, [sortConfig]);
+    
     useEffect(() => {
         const debouncedFilterSort = debounce(() => applyFiltersAndSort(), 300);
         debouncedFilterSort();
         return () => clearTimeout(debouncedFilterSort); // Correct cleanup
     }, [allResults, usernameSearch, sortConfig, applyFiltersAndSort]); // applyFiltersAndSort is a dep
+    
+    // Process initial file URL if provided
+    useEffect(() => {
+        const processInitialFile = async () => {
+            if (initialFileUrl && !file) {
+                try {
+                    setLoading(true);
+                    setNotification({ message: `Processing file: ${initialFileName || 'uploaded file'}...`, type: 'info' });
+                    
+                    // Fetch the file content from the URL
+                    const response = await fetch(initialFileUrl);
+                    const blob = await response.blob();
+                    
+                    // Create a File object from the blob
+                    const fileFromBlob = new File([blob], initialFileName || 'uploaded_file.csv', { 
+                        type: blob.type || 'text/csv' 
+                    });
+                    
+                    // Set the file and filename
+                    setFile(fileFromBlob);
+                    setFileName(initialFileName || 'uploaded_file.csv');
+                    
+                    // Process the file for bulk upload
+                    const formData = new FormData();
+                    formData.append('file', fileFromBlob);
+                    
+                    const results = await fetchData(`${API_BASE_URL}/fetch-profiles`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    
+                    if (results && Array.isArray(results)) {
+                        const validDataResults = results.filter(r => r && r.username);
+                        setAllResults(validDataResults);
+                        const successCount = validDataResults.filter(r => r.status === 'success').length;
+                        const errorCount = validDataResults.length - successCount;
+                        setNotification({ 
+                            message: `${successCount} profiles fetched successfully, ${errorCount} failed or not found.`, 
+                            type: 'success' 
+                        });
+                    } else {
+                        setNotification({ 
+                            message: 'Received malformed data structure or no data from the file.', 
+                            type: 'error' 
+                        });
+                        setAllResults([]);
+                    }
+                } catch (error) {
+                    console.error("Error processing initial file:", error);
+                    setNotification({ 
+                        message: `Error processing file: ${error.message}`, 
+                        type: 'error' 
+                    });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        processInitialFile();
+    }, [initialFileUrl, initialFileName, fetchData]);
 
     // exportToCSV, exportUsernamesToCSV, exportAllData, exportNonParticipants remain the same as last version
     const exportToCSV = useCallback((dataToExport, filename) => {
@@ -597,21 +668,18 @@ const CodeChefProfileAnalyzer = () => {
                     <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
                         CodeChef Profile Analyzer
                     </h1>
-                    <p className="text-slate-400 text-sm">Analyze profiles, contest participation, and activity.</p>
-                </header>
+                    <p className="text-slate-400 text-sm">Analyze profiles, contest participation, and activity.</p>                </header>
 
-                {errorMessage && (
-                    <div className="fixed top-5 right-5 bg-red-600 text-white p-3 rounded-md shadow-lg z-[100] flex items-center max-w-md">
-                        <ExclamationCircleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                        <span className="flex-grow break-words">{errorMessage}</span>
-                        <button onClick={() => setErrorMessage('')} className="ml-3 p-1 rounded-full hover:bg-red-700"><XMarkIcon className="h-4 w-4" /></button>
-                    </div>
-                )}
-                {successMessage && (
-                    <div className="fixed top-5 right-5 bg-green-600 text-white p-3 rounded-md shadow-lg z-[100] flex items-center max-w-md">
-                        <CheckCircleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-                        <span className="flex-grow break-words">{successMessage}</span>
-                        <button onClick={() => setSuccessMessage('')} className="ml-3 p-1 rounded-full hover:bg-green-700"><XMarkIcon className="h-4 w-4" /></button>
+                {notification.message && (
+                    <div className={`fixed top-5 right-5 ${notification.type === 'error' ? 'bg-red-600' : 'bg-green-600'} text-white p-3 rounded-md shadow-lg z-[100] flex items-center max-w-md`}>
+                        {notification.type === 'error' ? 
+                            <ExclamationCircleIcon className="h-5 w-5 mr-2 flex-shrink-0" /> : 
+                            <CheckCircleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
+                        }
+                        <span className="flex-grow break-words">{notification.message}</span>
+                        <button onClick={() => setNotification({message: '', type: ''})} className={`ml-3 p-1 rounded-full ${notification.type === 'error' ? 'hover:bg-red-700' : 'hover:bg-green-700'}`}>
+                            <XMarkIcon className="h-4 w-4" />
+                        </button>
                     </div>
                 )}
 

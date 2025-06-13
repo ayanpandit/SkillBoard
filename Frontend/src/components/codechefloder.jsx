@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import CodeChefProfileAnalyzer from './CodeChefProfileAnalyzer'; // Import the analyzer
 
 // Pulsating Loader Component
@@ -16,36 +17,44 @@ const PulsatingLoader = ({ text = "Loading..." }) => (
     </div>
 );
 
+// Main Loader Component
 export default function CodeChefLoader() {
-    const [showLoader, setShowLoader] = useState(true);
-    const [fadeOut, setFadeOut] = useState(false);
+  const [showLoader, setShowLoader] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
+  const location = useLocation();
+  const { fileUrl, fileName } = location.state || {};
+  
+  // Log for debugging
+  useEffect(() => {
+    console.log("CodeChefLoader received state:", location.state);
+  }, [location.state]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            // Start fade out animation
-            setFadeOut(true);
-            
-            // After fade out completes, show analyzer
-            setTimeout(() => {
-                setShowLoader(false);
-            }, 500); // 0.5s for fade out animation
-            
-        }, 1500); // 1.5-second loader
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Start fade out animation
+      setFadeOut(true);
+      
+      // After fade out completes, show analyzer
+      setTimeout(() => {
+        setShowLoader(false);
+      }, 500); // 0.5s for fade out animation
+      
+    }, 1500); // 1.5-second loader
 
-        return () => clearTimeout(timer); // Cleanup timer on component unmount
-    }, []);
+    return () => clearTimeout(timer); // Cleanup timer on component unmount
+  }, []);
 
-    // Show loader first, then analyzer
-    if (showLoader) {
-        return (
-            <div className={`min-h-screen bg-slate-900 text-slate-300 flex flex-col justify-center items-center transition-all duration-500 ${
-                fadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-            }`}>
-                <PulsatingLoader text="Initializing CodeChef Analyzer..." />
-            </div>
-        );
-    }
+  // Show loader first, then analyzer
+  if (showLoader) {
+    return (
+      <div className={`min-h-screen bg-slate-900 text-slate-300 flex flex-col justify-center items-center transition-all duration-500 ${
+        fadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+      }`}>
+        <PulsatingLoader text="Initializing CodeChef Analyzer..." />
+      </div>
+    );
+  }
 
-    // Show analyzer after loader completes
-    return <CodeChefProfileAnalyzer />;
+  // Show analyzer after loader completes with file parameters
+  return <CodeChefProfileAnalyzer initialFileUrl={fileUrl} initialFileName={fileName} />;
 }
