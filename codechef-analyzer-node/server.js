@@ -42,6 +42,25 @@ const APIConfig = {
     MAX_CACHE_SIZE: 50000,             // Limit cache size
 };
 
+// --- Ultra Fast Logger (MOVED BEFORE CLASS DEFINITION) ---
+const logger = {
+    info: (message) => {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[INFO] ${new Date().toISOString()} - ${message}`);
+        }
+    },
+    warn: (message) => console.warn(`[WARN] ${new Date().toISOString()} - ${message}`),
+    error: (message, error) => {
+        const errorMsg = error ? ` - ${error.message || error}` : '';
+        console.error(`[ERROR] ${new Date().toISOString()} - ${message}${errorMsg}`);
+    },
+    debug: (message) => {
+        if (process.env.NODE_ENV === 'development') {
+            console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`);
+        }
+    }
+};
+
 // --- Global State with Memory Optimization ---
 class OptimizedGlobalState {
     constructor() {
@@ -234,25 +253,6 @@ class OptimizedGlobalState {
 }
 
 const globalState = new OptimizedGlobalState();
-
-// --- Ultra Fast Logger ---
-const logger = {
-    info: (message) => {
-        if (process.env.NODE_ENV !== 'production') {
-            console.log(`[INFO] ${new Date().toISOString()} - ${message}`);
-        }
-    },
-    warn: (message) => console.warn(`[WARN] ${new Date().toISOString()} - ${message}`),
-    error: (message, error) => {
-        const errorMsg = error ? ` - ${error.message || error}` : '';
-        console.error(`[ERROR] ${new Date().toISOString()} - ${message}${errorMsg}`);
-    },
-    debug: (message) => {
-        if (process.env.NODE_ENV === 'development') {
-            console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`);
-        }
-    }
-};
 
 // --- CORS with Optimized Settings ---
 const allowedOrigins = [
