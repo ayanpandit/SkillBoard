@@ -2,11 +2,13 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Menu, X, Home, User, Phone, Briefcase, ChevronDown, LogOut } from 'lucide-react';
 import LoginSignup from './LoginSignup';
-import { useAuth } from '../context/AuthContext'; // Import useAuth for Supabase
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext'; // Added import
 
 const Navbar = () => {    const navigate = useNavigate();
     const location = useLocation();
     const { currentUser, signOut } = useAuth(); // Get currentUser and signOut from context
+    const { showToast } = useToast(); // Added useToast
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const [openDropdown, setOpenDropdown] = useState('');
@@ -91,6 +93,17 @@ const Navbar = () => {    const navigate = useNavigate();
         }
     };
 
+    const handleAnalyzerNavigation = (route) => {
+        if (!currentUser) {
+            showToast('Please sign in to access the analyzer', 'info');
+            setShowLoginSignup(true);
+            setOpenDropdown('');
+            return;
+        }
+        setOpenDropdown('');
+        navigate(route);
+    };
+
     const navItems = [
         { name: 'Home', icon: Home, action: () => navigate('/') },
         { 
@@ -98,8 +111,8 @@ const Navbar = () => {    const navigate = useNavigate();
             icon: Briefcase, 
             isDropdown: true,
             subItems: [
-                { name: 'CodeChef', action: () => navigate('/codechefloder') },
-                { name: 'LeetCode', action: () => navigate('/LeetCodeProfileAnalyze') }
+                { name: 'CodeChef', action: () => handleAnalyzerNavigation('/codechefloder') },
+                { name: 'LeetCode', action: () => handleAnalyzerNavigation('/LeetCodeProfileAnalyze') }
             ]
         },
         { name: 'About', icon: User, action: () => navigate('/About') },        { name: 'Contact', icon: Phone, action: () => {
@@ -285,7 +298,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                                             setIsMenuOpen(false);
                                                             setOpenDropdown('');
                                                             setTimeout(() => {
-                                                                subItem.action();
+                                                                handleAnalyzerNavigation(subItem.action()); // Using handleAnalyzerNavigation
                                                             }, 100);
                                                         }}
                                                         className="w-full px-4 py-2 rounded-lg text-left text-white hover:bg-white/10 transition-colors duration-200"
@@ -372,7 +385,11 @@ const Navbar = () => {    const navigate = useNavigate();
                 }
             `}</style>
             </nav>
-            {showLoginSignup && <LoginSignup onClose={handleCloseLoginSignup} />}
+            {showLoginSignup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50">
+                    <LoginSignup onClose={handleCloseLoginSignup} />
+                </div>
+            )}
         </>
     );
 };

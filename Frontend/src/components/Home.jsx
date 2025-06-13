@@ -1,9 +1,16 @@
 import bgImage from '../assets/bg.webp';
 import { useNavigate } from 'react-router-dom';
 import { Code2, Trophy, Users, Star, ExternalLink, ChevronDown } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useState } from 'react';
+import LoginSignup from './LoginSignup';
+import { useToast } from '../context/ToastContext';
 
 const HomePage = () => {
     const navigate = useNavigate();
+    const { currentUser } = useAuth();
+    const [showLoginSignup, setShowLoginSignup] = useState(false);
+    const { showToast } = useToast();
 
     const scrollToCards = () => {
         const cardsSection = document.getElementById('platforms-section');
@@ -58,17 +65,38 @@ const HomePage = () => {
         }
     ];
 
+    const handleAnalyzerNavigation = (platformId) => {
+        if (!currentUser) {
+            showToast('Please sign in to access the analyzer', 'info');
+            setShowLoginSignup(true);
+            return;
+        }
+
+        if (platformId === 'codechef') {
+            navigate('/codechefloder');
+        } else if (platformId === 'leetcode') {
+            navigate('/LeetCodeProfileAnalyze');
+        }
+    };
+
     return (
-        <div className="min-h-screen relative">            {/* Static Background */}
+        <div className="min-h-screen relative">
+            {/* Login/Signup Modal */}
+            {showLoginSignup && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <LoginSignup onClose={() => setShowLoginSignup(false)} />
+                </div>
+            )}
+
+            {/* Static Background */}
             <div
                 className="fixed inset-0 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${bgImage})` }}
             ></div>
 
             {/* Scrollable Content */}
-            <div className="relative z-10 min-h-screen">
-                {/* Hero Section */}
-                <section className="min-h-screen flex items-center justify-center px-4 py-20 pt-32">
+            <div className="relative z-10 min-h-screen">                {/* Hero Section */}
+                <section className="min-h-screen flex items-center justify-center px-4 py-20 pt-48">
                     <div className="max-w-7xl mx-auto text-center">
                         {/* Main Heading */}
                         <div className="mb-12">
@@ -146,16 +174,20 @@ const HomePage = () => {
 
                                     {/* Action Button */}
                                     <button
-                                        onClick={() => {
-                                            if (platform.id === 'codechef') {
-                                                navigate('/codechefloder');
-                                            } else if (platform.id === 'leetcode') {
-                                                navigate('/LeetCodeProfileAnalyze');
-                                            }
-                                        }}
-                                        className={`w-full py-3 bg-gradient-to-r ${platform.color} text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300`}
+                                        onClick={() => handleAnalyzerNavigation(platform.id)}
+                                        className={`w-full py-3 bg-gradient-to-r ${platform.color} text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2`}
                                     >
-                                        Analyze {platform.name} Profile
+                                        {currentUser ? (
+                                            <>
+                                                <span>Analyze {platform.name} Profile</span>
+                                                <Code2 className="w-5 h-5" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>Sign in to Analyze {platform.name}</span>
+                                                <Users className="w-5 h-5" />
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             ))}

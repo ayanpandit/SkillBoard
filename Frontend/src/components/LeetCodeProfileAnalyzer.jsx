@@ -101,8 +101,9 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
   const [filterRealName, setFilterRealName] = useState('');
   const [weeklyContestQuery, setWeeklyContestQuery] = useState('');
   
-  // Process initial file URL if provided  useEffect(() => {
-    const loadInitialFile = async () => {
+  // Process initial file URL if provided
+  useEffect(() => {
+    const processInitialFile = async () => {
       if (initialFileUrl && !lastSearchedFile) {
         try {
           setIsLoading(true);
@@ -120,18 +121,42 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
           // Set as last searched file
           setLastSearchedFile(fileFromBlob);
           
-          // Only load the file, don't auto-process
-          setSuccessMessage(`File loaded: ${initialFileName || 'uploaded file'}. Click "Search" to analyze.`);
-          setIsLoading(false);
+          // Process the file similar to handleBulkSearch
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const fileData = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(fileData, { type: 'array' });
+              const sheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[sheetName];
+              const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+              const usernames = json.flat().map(name => String(name || '').trim()).filter(name => name && name.length > 0);
+              
+              if (usernames.length === 0) {
+                setError('No valid usernames found in the file.');
+                setIsLoading(false);
+                return;
+              }
+              
+              setLastSearchedUsernames(usernames);
+              await processUsernames(usernames);
+              
+            } catch (err) {
+              console.error("File processing error:", err);
+              setError('Failed to process file: ' + (err.message || 'Unknown error'));
+              setIsLoading(false);
+            }
+          };
+          reader.readAsArrayBuffer(fileFromBlob);
+          
         } catch (error) {
-          console.error("Error loading initial file:", error);
-          setError(`Error loading file: ${error.message || 'Unknown error'}`);
+          console.error("Error processing initial file:", error);
+          setError(`Error processing file: ${error.message || 'Unknown error'}`);
           setIsLoading(false);
         }
       }
     };
-    
-    loadInitialFile();
+      processInitialFile();
   }, [initialFileUrl, initialFileName]);
   const [biweeklyContestQuery, setBiweeklyContestQuery] = useState('');
   const [contestHighlights, setContestHighlights] = useState({});

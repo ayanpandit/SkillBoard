@@ -37,6 +37,7 @@ import Profile from "./components/Profile"; // Import Profile component
 import AuthRedirect from "./components/AuthRedirect"; // Import AuthRedirect component
 import { useAuth } from "./context/AuthContext"; // Import useAuth
 import { Navigate } from 'react-router-dom'; // Import Navigate for protected routes
+import { ToastProvider } from './context/ToastContext'; // Import ToastProvider
 
 // Helper component to apply conditional background
 const AppWrapper = () => {
@@ -83,7 +84,9 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <Router basename="/">
-      <AppWrapper />
+      <ToastProvider>
+        <AppWrapper />
+      </ToastProvider>
     </Router>
   );
 }
