@@ -141,7 +141,7 @@ const TableRow = memo(({ item, index, columns, specificContestSearch, checkConte
 });
 
 
-const CodeChefProfileAnalyzer = () => {
+const CodeChefProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
     // States remain the same
     const [singleUsername, setSingleUsername] = useState('');
     const [file, setFile] = useState(null);
@@ -273,8 +273,7 @@ const CodeChefProfileAnalyzer = () => {
         } else {
             showNotification('Received malformed data structure for bulk users or no data.', 'error');
             setAllResults([]);
-        }
-    }, [file, fetchData, showNotification]);
+        }    }, [file, fetchData, showNotification]);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
@@ -587,6 +586,66 @@ const CodeChefProfileAnalyzer = () => {
             render: (item) => item.status === 'success' ? (getNestedValue(item, 'data.globalRank') || 'N/A') : <span className="text-slate-500">N/A</span>
         },
     ], [getNestedValue, getStarBadge, calculateCheatCount]); // Dependencies for useMemo
+
+    // Effect to handle initialFileUrl if provided
+    useEffect(() => {
+        const processInitialFile = async () => {
+            if (initialFileUrl && !file) {
+                try {
+                    console.log("Processing initial file:", initialFileName);
+                    setLoading(true);
+                    showNotification(`Processing file: ${initialFileName || 'uploaded file'}...`, 'info');
+                    
+                    // Fetch the file content from the URL
+                    const response = await fetch(initialFileUrl);
+                    const blob = await response.blob();
+                    
+                    // Create a File object from the blob
+                    const fileFromBlob = new File([blob], initialFileName || 'uploaded_file.csv', { 
+                        type: blob.type || 'text/csv' 
+                    });
+                    
+                    // Set the file and filename
+                    setFile(fileFromBlob);
+                    setFileName(initialFileName || 'uploaded_file.csv');
+                    
+                    // Automatically trigger processBulkUpload after a short delay
+                    setTimeout(() => {
+                        const formData = new FormData();
+                        formData.append('file', fileFromBlob);
+                        
+                        fetchData(`${API_BASE_URL}/fetch-profiles`, {
+                            method: 'POST',
+                            body: formData,
+                        }).then(results => {
+                            if (results && Array.isArray(results)) {
+                                const validDataResults = results.filter(r => r && r.username);
+                                setAllResults(validDataResults);
+                                const successCount = validDataResults.filter(r => r.status === 'success').length;
+                                const errorCount = validDataResults.length - successCount;
+                                showNotification(
+                                    `${successCount} profiles fetched successfully, ${errorCount} failed or not found.`, 
+                                    'success',
+                                    7000
+                                );
+                            } else if (results === null) {
+                                setAllResults([]);
+                            } else {
+                                showNotification('Received malformed data structure or no data from the file.', 'error');
+                                setAllResults([]);
+                            }
+                            setLoading(false);
+                        });
+                    }, 500); // Small delay to ensure UI updates first
+                } catch (error) {
+                    console.error("Error processing initial file:", error);
+                    showNotification(`Error processing file: ${error.message}`, 'error');
+                    setLoading(false);
+                }
+            }
+        };
+        
+        processInitialFile();    }, [initialFileUrl, initialFileName, fetchData, showNotification]);
 
     // Return JSX (Main UI structure, Error/Success messages, Input sections, Filter/Search, Table, Modal, Footer)
     // remains structurally the same as the last good version. The critical changes are above.

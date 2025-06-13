@@ -53,8 +53,6 @@ export default function CodeChefLoader() {
         <PulsatingLoader text="Initializing CodeChef Analyzer..." />
       </div>
     );
-  }
-
-  // Show analyzer after loader completes with file parameters
+  }  // Show analyzer after loader completes with file parameters
   return <CodeChefProfileAnalyzer initialFileUrl={fileUrl} initialFileName={fileName} />;
 }

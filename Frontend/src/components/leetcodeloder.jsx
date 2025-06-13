@@ -46,7 +46,6 @@ export default function LeetCodeLoader() {
             }`}>
                 <PulsatingLoader text="Initializing LeetCode Analyzer..." />
             </div>
-        );
-    }    // Show analyzer after loader completes
+        );    }    // Show analyzer after loader completes
     return <LeetCodeProfileAnalyzer initialFileUrl={fileParams.fileUrl} initialFileName={fileParams.fileName} />;
 }
