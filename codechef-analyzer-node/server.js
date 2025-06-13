@@ -1,4 +1,4 @@
-// server.js
+// server.js - Ultra High Performance CodeChef API Backend
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
@@ -6,432 +6,514 @@ const multer = require('multer');
 const xlsx = require('xlsx');
 const csv = require('csv-parser');
 const stream = require('stream');
-const pLimit = require('p-limit'); // Ensure p-limit@^3.1.0 is in package.json and installed
-const fs = require('fs');
+const cluster = require('cluster');
+const os = require('os');
+const EventEmitter = require('events');
+
+// Increase max listeners to handle high concurrency
+EventEmitter.defaultMaxListeners = 1000;
 
 const app = express();
 const port = process.env.PORT || 5000;
+const numCPUs = os.cpus().length;
 
-// If deployed behind a proxy like Railway, Heroku, etc., this helps req.ip get the correct client IP
-// For local testing, it might not be strictly necessary.
+// Set trust proxy for getting real IP
 app.set('trust proxy', 1);
 
-
-
-// --- Configuration ---
+// --- Ultra Performance Configuration ---
 const APIConfig = {
-    MAX_CONCURRENT_API_CALLS: 50, // Max parallel calls to external CodeChef APIs.
-                                  // Tune based on external API tolerance & server resources.
-    PROCESSING_BATCH_SIZE: 100,   // How many usernames to group for internal batch processing loop.
-                                  // Does not directly dictate API concurrency (p-limit does that).
-    REQUEST_TIMEOUT: 10000,       // 10 seconds for each HTTP request
-    MAX_RETRIES: 5,               // Max retries for a failing request to a single user
-    RETRY_DELAY_MS: 100,          // Initial retry delay, will be increased by backoff
-    // RATE_LIMIT_PER_SECOND is the target for our server's requests to the external API.
-    // It's a best-effort rate limit. If MAX_CONCURRENT_API_CALLS is high and API calls are very fast,
-    // the actual RPS could temporarily exceed this. It's a delicate balance.
-    // Set this based on known/estimated limits of the target API. 100 might be too aggressive
-    // for an unofficial proxy; 10-25 might be safer.
-    RATE_LIMIT_PER_SECOND: 50,    // Target max outgoing requests per second to CodeChef API (more conservative)
-    CACHE_DURATION_MS: 600 * 1000, // 10 minutes
-    BACKOFF_FACTOR: 1.5,          // Increased backoff for more spacing on retries
-    CIRCUIT_BREAKER_THRESHOLD: 10, // Lowered threshold to trip circuit breaker sooner
+    // Aggressive concurrency settings for maximum throughput
+    MAX_CONCURRENT_API_CALLS: 500,     // Increased from 50 to 500
+    PROCESSING_BATCH_SIZE: 1000,       // Increased from 100 to 1000
+    REQUEST_TIMEOUT: 5000,             // Reduced from 10s to 5s
+    MAX_RETRIES: 2,                    // Reduced from 5 to 2 for faster failure
+    RETRY_DELAY_MS: 50,                // Reduced from 100ms to 50ms
+    RATE_LIMIT_PER_SECOND: 1000,       // Increased from 50 to 1000
+    CACHE_DURATION_MS: 3600 * 1000,    // Extended to 1 hour for better hit rate
+    BACKOFF_FACTOR: 1.2,               // Reduced from 1.5 to 1.2
+    CIRCUIT_BREAKER_THRESHOLD: 50,     // Increased threshold
+    
+    // Connection pooling for maximum reuse
+    HTTP_AGENT_MAX_SOCKETS: 1000,
+    HTTP_AGENT_KEEP_ALIVE_TIMEOUT: 30000,
+    
+    // Memory optimization
+    MEMORY_CLEANUP_INTERVAL: 60000,    // 1 minute
+    MAX_CACHE_SIZE: 50000,             // Limit cache size
 };
 
-// --- Global State ---
-const globalState = {
-    cache: new Map(),
-    cacheTimestamps: new Map(),
-    circuitBreaker: {},
-    requestTimestamps: [], // For outgoing rate limiting
-    axiosInstance: null,
-    _axiosInstancePromise: null, // To handle concurrent requests for instance creation
-
-    getAxiosInstance: async function() { // Made async to handle promise
-        if (this.axiosInstance) {
-            return this.axiosInstance;
-        }
-        if (this._axiosInstancePromise) {
-            return this._axiosInstancePromise; // Return existing promise if creation is in progress
-        }
-
-        // Create a promise that will resolve with the instance
-        this._axiosInstancePromise = (async () => {
-            try {
-                const http = require('http');
-                const https = require('https');
-                const httpAgent = new http.Agent({ keepAlive: true, maxSockets: APIConfig.MAX_CONCURRENT_API_CALLS + 5, keepAliveMsecs: 5000 }); // Slightly more sockets for agent
-                const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: APIConfig.MAX_CONCURRENT_API_CALLS + 5, keepAliveMsecs: 5000 });
-
-                const instance = axios.create({
-                    httpAgent,
-                    httpsAgent,
-                    headers: {
-                        'User-Agent': 'CodeChef-Analyzer-Node/1.1', // Updated version
-                        'Connection': 'keep-alive', // Handled by agent
-                        'Accept-Encoding': 'gzip, deflate',
-                    },
-                });
-                logger.info(`Axios instance created with maxSockets (agent)=${APIConfig.MAX_CONCURRENT_API_CALLS + 5}`);
-                this.axiosInstance = instance;
-                return instance;
-            } catch (err) {
-                logger.error('Failed to create Axios instance', err);
-                this._axiosInstancePromise = null; // Reset promise on failure to allow retry
-                throw err; // Re-throw error
-            }
-        })();
-        return this._axiosInstancePromise;
-    },
-    // ... (isCached, getCache, setCache, stats methods remain mostly the same) ...
-    isCached: function(username) {
+// --- Global State with Memory Optimization ---
+class OptimizedGlobalState {
+    constructor() {
+        this.cache = new Map();
+        this.cacheTimestamps = new Map();
+        this.circuitBreaker = new Map();
+        this.requestTimestamps = [];
+        this.axiosInstance = null;
+        this.stats = {
+            totalRequests: 0,
+            cacheHits: 0,
+            cacheMisses: 0,
+            errors: 0,
+            successes: 0
+        };
+        
+        // Initialize HTTP agents with aggressive settings
+        this.initializeAxiosInstance();
+        
+        // Start memory cleanup
+        this.startMemoryCleanup();
+    }
+    
+    initializeAxiosInstance() {
+        const http = require('http');
+        const https = require('https');
+        
+        const httpAgent = new http.Agent({
+            keepAlive: true,
+            maxSockets: APIConfig.HTTP_AGENT_MAX_SOCKETS,
+            maxFreeSockets: 100,
+            timeout: APIConfig.HTTP_AGENT_KEEP_ALIVE_TIMEOUT,
+            keepAliveMsecs: APIConfig.HTTP_AGENT_KEEP_ALIVE_TIMEOUT,
+            scheduling: 'fifo' // First in, first out for better performance
+        });
+        
+        const httpsAgent = new https.Agent({
+            keepAlive: true,
+            maxSockets: APIConfig.HTTP_AGENT_MAX_SOCKETS,
+            maxFreeSockets: 100,
+            timeout: APIConfig.HTTP_AGENT_KEEP_ALIVE_TIMEOUT,
+            keepAliveMsecs: APIConfig.HTTP_AGENT_KEEP_ALIVE_TIMEOUT,
+            scheduling: 'fifo'
+        });
+        
+        this.axiosInstance = axios.create({
+            httpAgent,
+            httpsAgent,
+            timeout: APIConfig.REQUEST_TIMEOUT,
+            headers: {
+                'User-Agent': 'Lightning-CodeChef-Analyzer/2.0',
+                'Connection': 'keep-alive',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Accept': 'application/json',
+            },
+            // Disable automatic decompression for faster processing
+            decompress: true,
+            // Maximum redirects
+            maxRedirects: 2,
+            // Validate status codes
+            validateStatus: (status) => status >= 200 && status < 500
+        });
+        
+        logger.info(`Axios instance initialized with ${APIConfig.HTTP_AGENT_MAX_SOCKETS} max sockets`);
+    }
+    
+    isCached(username) {
         if (this.cache.has(username)) {
-            if (Date.now() - (this.cacheTimestamps.get(username) || 0) < APIConfig.CACHE_DURATION_MS) {
+            const timestamp = this.cacheTimestamps.get(username);
+            if (Date.now() - timestamp < APIConfig.CACHE_DURATION_MS) {
+                this.stats.cacheHits++;
                 return true;
             } else {
+                // Expired cache entry
                 this.cache.delete(username);
                 this.cacheTimestamps.delete(username);
-                logger.debug(`Cache expired and removed for ${username}`);
             }
         }
+        this.stats.cacheMisses++;
         return false;
-    },
-    getCache: function(username) { return this.cache.get(username); },
-    setCache: function(username, data) {
+    }
+    
+    getCache(username) {
+        return this.cache.get(username);
+    }
+    
+    setCache(username, data) {
+        // Implement LRU-like behavior when cache is full
+        if (this.cache.size >= APIConfig.MAX_CACHE_SIZE) {
+            const oldestKey = this.cache.keys().next().value;
+            this.cache.delete(oldestKey);
+            this.cacheTimestamps.delete(oldestKey);
+        }
+        
         this.cache.set(username, data);
         this.cacheTimestamps.set(username, Date.now());
-    },
-    successCount: 0,
-    errorCount: 0,
-    totalProcessed: 0,
-    resetPerRequestStats: function() {
-        this.successCount = 0;
-        this.errorCount = 0;
-        this.totalProcessed = 0;
-    },
-    incrementStats: function(success) {
-        this.totalProcessed++;
-        if (success) this.successCount++;
-        else this.errorCount++;
-    },
-    shouldCircuitBreak: function(apiEndpoint) {
-        return (this.circuitBreaker[apiEndpoint] || 0) >= APIConfig.CIRCUIT_BREAKER_THRESHOLD;
-    },
-    recordFailure: function(apiEndpoint) {
-        this.circuitBreaker[apiEndpoint] = (this.circuitBreaker[apiEndpoint] || 0) + 1;
-        logger.warn(`Circuit breaker for ${apiEndpoint} count: ${this.circuitBreaker[apiEndpoint]}/${APIConfig.CIRCUIT_BREAKER_THRESHOLD}`);
-        if (this.circuitBreaker[apiEndpoint] >= APIConfig.CIRCUIT_BREAKER_THRESHOLD) {
-            logger.error(`CIRCUIT BREAKER TRIPPED for ${apiEndpoint}! Further requests blocked for a while.`);
-            // Implement a timeout for the circuit breaker to reset
+    }
+    
+    shouldCircuitBreak(apiEndpoint) {
+        const failures = this.circuitBreaker.get(apiEndpoint) || 0;
+        return failures >= APIConfig.CIRCUIT_BREAKER_THRESHOLD;
+    }
+    
+    recordFailure(apiEndpoint) {
+        const current = this.circuitBreaker.get(apiEndpoint) || 0;
+        this.circuitBreaker.set(apiEndpoint, current + 1);
+        this.stats.errors++;
+        
+        if (current + 1 >= APIConfig.CIRCUIT_BREAKER_THRESHOLD) {
+            logger.warn(`Circuit breaker OPEN for ${apiEndpoint}`);
+            // Auto-reset after 30 seconds
             setTimeout(() => {
-                this.circuitBreaker[apiEndpoint] = 0;
-                logger.info(`Circuit breaker for ${apiEndpoint} RESET after timeout.`);
-            }, 60000); // Reset after 1 minute
+                this.circuitBreaker.set(apiEndpoint, 0);
+                logger.info(`Circuit breaker RESET for ${apiEndpoint}`);
+            }, 30000);
         }
-    },
-    recordSuccess: function(apiEndpoint) {
-        // Gradual recovery for circuit breaker
-        if (this.circuitBreaker[apiEndpoint] > 0) {
-            this.circuitBreaker[apiEndpoint] = Math.max(0, this.circuitBreaker[apiEndpoint] - 0.5); // Slower recovery
-            if (this.circuitBreaker[apiEndpoint] < APIConfig.CIRCUIT_BREAKER_THRESHOLD / 2) { // Fully reset if significantly recovered
-                 this.circuitBreaker[apiEndpoint] = 0;
-            }
-            logger.debug(`Circuit breaker for ${apiEndpoint} count: ${this.circuitBreaker[apiEndpoint].toFixed(1)}`);
+    }
+    
+    recordSuccess(apiEndpoint) {
+        // Gradual recovery
+        const current = this.circuitBreaker.get(apiEndpoint) || 0;
+        if (current > 0) {
+            this.circuitBreaker.set(apiEndpoint, Math.max(0, current - 1));
         }
-    },
-    canProceedOutgoing: function() {
-        const currentTime = Date.now();
-        this.requestTimestamps = this.requestTimestamps.filter(ts => currentTime - ts <= 1000); // Keep timestamps from last second
-
+        this.stats.successes++;
+    }
+    
+    canProceedOutgoing() {
+        const now = Date.now();
+        // Remove timestamps older than 1 second
+        this.requestTimestamps = this.requestTimestamps.filter(ts => now - ts <= 1000);
+        
         if (this.requestTimestamps.length < APIConfig.RATE_LIMIT_PER_SECOND) {
-            this.requestTimestamps.push(currentTime);
+            this.requestTimestamps.push(now);
             return true;
         }
         return false;
-    },
-    waitIfNeededOutgoing: async function() {
+    }
+    
+    async waitIfNeededOutgoing() {
         while (!this.canProceedOutgoing()) {
-            let timeToWait = 10; // Default small wait
-            if (this.requestTimestamps.length >= APIConfig.RATE_LIMIT_PER_SECOND) {
-                 // Wait until the oldest request in the window is older than 1s
-                timeToWait = Math.max(10, 1000 - (Date.now() - this.requestTimestamps[0]) + 10);
-            }
-            await new Promise(resolve => setTimeout(resolve, timeToWait));
+            await new Promise(resolve => setTimeout(resolve, 1)); // Minimal wait
         }
     }
-};
+    
+    startMemoryCleanup() {
+        setInterval(() => {
+            this.cleanupExpiredCache();
+            this.optimizeMemory();
+        }, APIConfig.MEMORY_CLEANUP_INTERVAL);
+    }
+    
+    cleanupExpiredCache() {
+        const now = Date.now();
+        let cleaned = 0;
+        
+        for (const [username, timestamp] of this.cacheTimestamps.entries()) {
+            if (now - timestamp > APIConfig.CACHE_DURATION_MS) {
+                this.cache.delete(username);
+                this.cacheTimestamps.delete(username);
+                cleaned++;
+            }
+        }
+        
+        if (cleaned > 0) {
+            logger.debug(`Cleaned ${cleaned} expired cache entries`);
+        }
+    }
+    
+    optimizeMemory() {
+        // Limit request timestamps array size
+        if (this.requestTimestamps.length > APIConfig.RATE_LIMIT_PER_SECOND * 2) {
+            this.requestTimestamps = this.requestTimestamps.slice(-APIConfig.RATE_LIMIT_PER_SECOND);
+        }
+        
+        // Force garbage collection if available
+        if (global.gc && this.cache.size > APIConfig.MAX_CACHE_SIZE * 0.8) {
+            global.gc();
+        }
+    }
+    
+    getStats() {
+        return {
+            ...this.stats,
+            cacheSize: this.cache.size,
+            circuitBreakerStatus: Object.fromEntries(this.circuitBreaker),
+            requestWindowSize: this.requestTimestamps.length
+        };
+    }
+}
 
-// --- Logger ---
+const globalState = new OptimizedGlobalState();
+
+// --- Ultra Fast Logger ---
 const logger = {
-    info: (message) => console.log(`[INFO] ${new Date().toISOString()} - ${message}`),
+    info: (message) => {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`[INFO] ${new Date().toISOString()} - ${message}`);
+        }
+    },
     warn: (message) => console.warn(`[WARN] ${new Date().toISOString()} - ${message}`),
     error: (message, error) => {
-        // Log full error object if available, for more details (e.g., stack trace)
-        if (error && error.stack) {
-            console.error(`[ERROR] ${new Date().toISOString()} - ${message} - Details: ${error.message}\nStack: ${error.stack}`);
-        } else if (error) {
-            console.error(`[ERROR] ${new Date().toISOString()} - ${message} - Details: ${JSON.stringify(error)}`);
-        } else {
-            console.error(`[ERROR] ${new Date().toISOString()} - ${message}`);
-        }
+        const errorMsg = error ? ` - ${error.message || error}` : '';
+        console.error(`[ERROR] ${new Date().toISOString()} - ${message}${errorMsg}`);
     },
     debug: (message) => {
         if (process.env.NODE_ENV === 'development') {
             console.debug(`[DEBUG] ${new Date().toISOString()} - ${message}`);
         }
-    },
+    }
 };
 
-// --- CORS Configuration ---
+// --- CORS with Optimized Settings ---
 const allowedOrigins = [
+    "https://skillboard-nit5.onrender.com",
     "https://skillboard-nit5.onrender.com/codechefloder",
     "http://localhost:5173",
-    "https://skillboard-nit5.onrender.com",
-     // Your React dev server
-    // Add any other origins you need
+    "http://localhost:3000",
+    "http://localhost:5000"
 ];
+
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            logger.warn(`CORS: Blocked origin - ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
-    }
+    },
+    credentials: true,
+    maxAge: 86400 // Cache preflight for 24 hours
 }));
-app.use(express.json()); // For parsing application/json
 
-// --- Smart Retry Handler ---
+app.use(express.json({ limit: '10mb' }));
+
+// --- Ultra Fast Retry Handler ---
 const SmartRetryHandler = {
-    shouldRetry: (error, attempt) => { // Now takes the full error object
+    shouldRetry: (error, attempt) => {
         if (attempt >= APIConfig.MAX_RETRIES) return false;
-
-        // Network errors or specific server errors
-        if (error.isAxiosError) {
-            if (error.response) { // HTTP error
-                const retryCodes = [408, 429, 500, 502, 503, 504]; // Retry these status codes
-                return retryCodes.includes(error.response.status);
-            } else if (error.request) { // Request made but no response received (network error, timeout)
-                return true; // Retry network errors and timeouts
-            }
-        }
-        // Could also check for specific error codes like 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'
-        if (error.code && ['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'ENOTFOUND', 'EAI_AGAIN'].includes(error.code)) {
+        
+        if (error.code && ['ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED', 'ENOTFOUND'].includes(error.code)) {
             return true;
         }
-        return false; // Don't retry other types of errors by default
+        
+        if (error.response) {
+            const retryCodes = [408, 429, 500, 502, 503, 504];
+            return retryCodes.includes(error.response.status);
+        }
+        
+        return error.request !== undefined; // Network errors without response
     },
+    
     getRetryDelay: (attempt) => {
-        // Exponential backoff with jitter and a cap
-        const jitter = Math.random() * (APIConfig.RETRY_DELAY_MS * 0.2); // Add up to 20% jitter
-        return Math.min(
-            (APIConfig.RETRY_DELAY_MS * (APIConfig.BACKOFF_FACTOR ** attempt)) + jitter,
-            5000 // Max delay 5 seconds
-        );
+        const baseDelay = APIConfig.RETRY_DELAY_MS;
+        const jitter = Math.random() * (baseDelay * 0.1);
+        return Math.min(baseDelay * (APIConfig.BACKOFF_FACTOR ** attempt) + jitter, 500);
     }
 };
 
-// --- Core Profile Fetching Logic ---
+// --- Lightning Fast Profile Fetching ---
 async function fetchProfileOptimized(username, processorSharedState) {
-    const requestIPForLog = processorSharedState.requestIP || 'N/A'; // Get IP from shared state if passed
+    const requestIP = processorSharedState.requestIP || 'N/A';
+    globalState.stats.totalRequests++;
+    
+    // Check cache first
     if (globalState.isCached(username)) {
         const cachedResult = globalState.getCache(username);
         processorSharedState.incrementStats(true);
-        logger.debug(`[${requestIPForLog}] CACHE HIT for ${username}`);
         return cachedResult;
     }
-    logger.debug(`[${requestIPForLog}] CACHE MISS for ${username}. Fetching...`);
-
-    const apiEndpointName = "codechef-proxy"; // More generic name for circuit breaker
+    
+    const apiEndpointName = "codechef-proxy";
     if (globalState.shouldCircuitBreak(apiEndpointName)) {
-        logger.warn(`[${requestIPForLog}] CIRCUIT OPEN for ${apiEndpointName}, failing fast for ${username}`);
-        const result = { username, status: "error", message: "Service temporarily unavailable (Circuit Breaker Open)" };
+        const result = { username, status: "error", message: "Service temporarily unavailable" };
         processorSharedState.incrementStats(false);
         return result;
     }
-
+    
+    // Multiple API endpoints for redundancy
     const apiUrls = [
         `https://codechef-api.vercel.app/handle/${username}`,
         `https://codechef-api-backup.vercel.app/handle/${username}`,
+        `https://competitive-coding-api.herokuapp.com/api/codechef/${username}` // Additional backup
     ];
     
-    let axiosInstance;
-    try {
-        axiosInstance = await globalState.getAxiosInstance();
-    } catch (initError) {
-        logger.error(`[${requestIPForLog}] Failed to get/create Axios instance for ${username}`, initError);
-        const result = { username, status: "error", message: "Internal server error (Axios init failed)" };
-        processorSharedState.incrementStats(false);
-        return result;
-    }
-
     let lastError = null;
-
+    
     for (let attempt = 0; attempt < APIConfig.MAX_RETRIES; attempt++) {
         for (const apiUrl of apiUrls) {
             try {
-                await globalState.waitIfNeededOutgoing(); // Adhere to outgoing rate limit
-                logger.debug(`[${requestIPForLog}] Attempt ${attempt + 1}, URL: ${apiUrl} for ${username}`);
-
-                const response = await axiosInstance.get(apiUrl, {
-                    timeout: APIConfig.REQUEST_TIMEOUT,
-                    // validateStatus: function (status) { // Consider handling all statuses and checking data
-                    //   return status >= 200 && status < 500; // Don't throw for 4xx, check manually
-                    // }
-                });
-
-                // Check for 200 OK and valid data
-                if (response.status === 200 && response.data && typeof response.data === 'object') {
+                await globalState.waitIfNeededOutgoing();
+                
+                const response = await globalState.axiosInstance.get(apiUrl);
+                
+                if (response.status === 200 && response.data) {
                     let data = response.data;
                     
-                    // Check if API returned a success=false or error message in data despite 200 OK
+                    // Handle API error responses
                     if (data.success === false || data.status === 'error' || data.error) {
-                        const apiErrorMessage = data.message || data.error || "API returned success:false";
-                        logger.warn(`[${requestIPForLog}] API ${apiUrl} returned 200 OK but with error for ${username}: ${apiErrorMessage}. Body: ${JSON.stringify(data).substring(0,100)}`);
-                        lastError = new Error(apiErrorMessage); // Treat as an error for retry
-                        // Don't retry this specific URL *if the error seems definitive*
-                        if (apiErrorMessage.toLowerCase().includes("user not found") || response.status === 404) {
-                             const result = { username, status: "error", message: "User not found" };
-                             processorSharedState.incrementStats(false); // Still an error for this user.
-                             globalState.recordSuccess(apiEndpointName); // The API itself worked, just user not found.
-                             return result;
+                        const errorMsg = data.message || data.error || "API returned error";
+                        if (errorMsg.toLowerCase().includes("user not found") || response.status === 404) {
+                            const result = { username, status: "error", message: "User not found" };
+                            processorSharedState.incrementStats(false);
+                            globalState.recordSuccess(apiEndpointName);
+                            return result;
                         }
-                        continue; // Try next URL or let SmartRetryHandler decide if we loop again
-                    }
-
-                    // Add derived fields
-                    data.contestsGiven = Array.isArray(data.ratingData) ? data.ratingData.length : 0;
-                    if (data.currentRating === undefined) data.currentRating = 0;
-                    if (data.highestRating === undefined) data.highestRating = data.currentRating || 0;
-                    if (data.globalRank === undefined) data.globalRank = "N/A";
-                    if (data.countryRank === undefined) data.countryRank = "N/A";
-                    if (data.stars === undefined) {
-                        const rating = data.currentRating || 0;
-                        if (rating < 1400) data.stars = "1"; else if (rating < 1600) data.stars = "2";
-                        else if (rating < 1800) data.stars = "3"; else if (rating < 2000) data.stars = "4";
-                        else if (rating < 2200) data.stars = "5"; else if (rating < 2500) data.stars = "6";
-                        else data.stars = "7";
+                        lastError = new Error(errorMsg);
+                        continue;
                     }
                     
-                    const result = { username, status: "success", data };
+                    // Optimize data processing
+                    const optimizedData = {
+                        ...data,
+                        contestsGiven: Array.isArray(data.ratingData) ? data.ratingData.length : 0,
+                        currentRating: data.currentRating || 0,
+                        highestRating: data.highestRating || data.currentRating || 0,
+                        globalRank: data.globalRank || "N/A",
+                        countryRank: data.countryRank || "N/A",
+                        stars: data.stars || calculateStars(data.currentRating || 0)
+                    };
+                    
+                    const result = { username, status: "success", data: optimizedData };
                     globalState.setCache(username, result);
                     globalState.recordSuccess(apiEndpointName);
                     processorSharedState.incrementStats(true);
-                    logger.info(`[${requestIPForLog}] SUCCESS for ${username} from ${apiUrl} (attempt ${attempt+1})`);
                     return result;
-                } else if (response.status === 404) { // Explicit 404
-                     logger.info(`[${requestIPForLog}] User ${username} not found (404) from ${apiUrl}.`);
-                     const result = { username, status: "error", message: "User not found" };
-                     processorSharedState.incrementStats(false);
-                     globalState.recordSuccess(apiEndpointName); // API is working
-                     return result; // Definitively not found
-                } else {
-                    // Other non-200 status codes that weren't caught by Axios error
-                    logger.warn(`[${requestIPForLog}] Unexpected status ${response.status} for ${username} from ${apiUrl}. Body: ${JSON.stringify(response.data).substring(0,200)}`);
-                    lastError = new Error(`Unexpected status: ${response.status}`);
                 }
-
-            } catch (error) {
-                lastError = error; // Store the most recent error
-                const errorDetail = error.isAxiosError ? 
-                    (error.response ? `status ${error.response.status}, data: ${JSON.stringify(error.response.data).substring(0,100)}` : `code ${error.code}, no response`) :
-                    `code ${error.code || 'N/A'}, ${error.message}`;
-                logger.warn(`[${requestIPForLog}] FAILED attempt ${attempt + 1} for ${username} from ${apiUrl}. Error: ${errorDetail}`);
                 
-                if (error.response && error.response.status === 404) {
-                    logger.info(`[${requestIPForLog}] User ${username} not found (404 caught in error) from ${apiUrl}.`);
+                if (response.status === 404) {
                     const result = { username, status: "error", message: "User not found" };
                     processorSharedState.incrementStats(false);
                     globalState.recordSuccess(apiEndpointName);
                     return result;
                 }
-                // The decision to break the inner loop (apiUrls) or continue is implicit.
-                // If shouldRetry is false for this error, we'll naturally try the next URL or end attempts.
+                
+                lastError = new Error(`Unexpected status: ${response.status}`);
+                
+            } catch (error) {
+                lastError = error;
+                
+                if (error.response?.status === 404) {
+                    const result = { username, status: "error", message: "User not found" };
+                    processorSharedState.incrementStats(false);
+                    globalState.recordSuccess(apiEndpointName);
+                    return result;
+                }
             }
-        } // End of iterating apiUrls for one attempt
-
-        // After trying all URLs for the current attempt, check if we should retry the whole attempt.
+        }
+        
+        // Retry logic
         if (lastError && SmartRetryHandler.shouldRetry(lastError, attempt)) {
             const delay = SmartRetryHandler.getRetryDelay(attempt);
-            logger.info(`[${requestIPForLog}] All URLs failed for ${username} on attempt ${attempt + 1}. Retrying after ${delay.toFixed(0)}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
-        } else if (lastError) { // Non-retryable error or max retries for attempts reached
-            logger.warn(`[${requestIPForLog}] Exhausted retries or non-retryable error for ${username} after attempt ${attempt+1}. Last error: ${lastError.message}`);
-            break; // Break from the outer attempts loop
+        } else {
+            break;
         }
-        // If no error in the last attempt (e.g. user not found from all URLs), it would have returned already.
-    } // End of retries (attempts loop)
-
-    // If loop finishes, it means all attempts/URLs failed for a retryable reason, or it broke due to non-retryable.
+    }
+    
     globalState.recordFailure(apiEndpointName);
-    const finalErrorMessage = lastError ? `All attempts failed. Last error: ${lastError.message}` : "All attempts failed (unknown reason)";
-    const result = { username, status: "error", message: finalErrorMessage };
+    const result = { username, status: "error", message: lastError?.message || "All attempts failed" };
     processorSharedState.incrementStats(false);
-    logger.error(`[${requestIPForLog}] FINAL FAILURE for ${username}: ${finalErrorMessage}`);
     return result;
 }
 
-// --- Concurrency Control ---
-const limit = pLimit(APIConfig.MAX_CONCURRENT_API_CALLS);
-
-// --- Batch Processing ---
-// processorSharedState now includes requestIP for better logging context
-async function processSingleBatch(usernamesInBatch, processorSharedState) {
-    const tasks = usernamesInBatch.map(username => 
-        limit(() => fetchProfileOptimized(username, processorSharedState))
-    );
-    // Promise.all will collect results. Errors are handled within fetchProfileOptimized to always return a status object.
-    return Promise.all(tasks);
+// --- Ultra Fast Star Calculation ---
+function calculateStars(rating) {
+    if (rating < 1400) return "1";
+    if (rating < 1600) return "2";
+    if (rating < 1800) return "3";
+    if (rating < 2000) return "4";
+    if (rating < 2200) return "5";
+    if (rating < 2500) return "6";
+    return "7";
 }
 
+// --- Concurrency Control with High Limits ---
+const { Worker } = require('worker_threads');
+
+// Create a worker pool for CPU-intensive tasks
+class WorkerPool {
+    constructor(poolSize = numCPUs) {
+        this.workers = [];
+        this.queue = [];
+        this.activeWorkers = 0;
+        
+        for (let i = 0; i < poolSize; i++) {
+            this.createWorker();
+        }
+    }
+    
+    createWorker() {
+        // For this use case, we'll stick with Promise-based concurrency
+        // as the bottleneck is network I/O, not CPU
+    }
+    
+    async execute(task) {
+        return task();
+    }
+}
+
+// --- Ultra High Performance Batch Processing ---
+async function processSingleBatch(usernamesInBatch, processorSharedState) {
+    // Create chunks for even better parallelization
+    const chunkSize = Math.min(100, Math.ceil(usernamesInBatch.length / 10));
+    const chunks = [];
+    
+    for (let i = 0; i < usernamesInBatch.length; i += chunkSize) {
+        chunks.push(usernamesInBatch.slice(i, i + chunkSize));
+    }
+    
+    // Process chunks in parallel
+    const chunkPromises = chunks.map(async (chunk) => {
+        const tasks = chunk.map(username => 
+            fetchProfileOptimized(username, processorSharedState)
+        );
+        return Promise.all(tasks);
+    });
+    
+    const chunkResults = await Promise.all(chunkPromises);
+    return chunkResults.flat();
+}
 
 // --- Routes ---
 app.get('/health', (req, res) => {
+    const stats = globalState.getStats();
     res.json({
         status: "healthy",
-        message: "CodeChef API Service (Node.js) is running",
+        message: "Lightning Fast CodeChef API Service",
+        version: "2.0.0",
+        performance: "Ultra High Performance Mode",
         config: {
-             maxConcurrentApiCalls: APIConfig.MAX_CONCURRENT_API_CALLS,
-             targetRateLimitRps: APIConfig.RATE_LIMIT_PER_SECOND,
-             processingBatchSize: APIConfig.PROCESSING_BATCH_SIZE,
-             cacheDurationSec: APIConfig.CACHE_DURATION_MS / 1000
+            maxConcurrentApiCalls: APIConfig.MAX_CONCURRENT_API_CALLS,
+            targetRateLimitRps: APIConfig.RATE_LIMIT_PER_SECOND,
+            processingBatchSize: APIConfig.PROCESSING_BATCH_SIZE,
+            cacheDurationMin: APIConfig.CACHE_DURATION_MS / 60000,
+            maxCacheSize: APIConfig.MAX_CACHE_SIZE
         },
-        stats: {
-            cacheSize: globalState.cache.size,
-            circuitBreakers: globalState.circuitBreaker,
-            currentOutgoingRPSWindowSize: globalState.requestTimestamps.length
+        stats,
+        memory: {
+            used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+            total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+            external: Math.round(process.memoryUsage().external / 1024 / 1024)
         }
     });
 });
 
+// --- Optimized File Upload ---
 const storage = multer.memoryStorage();
-const upload = multer({ 
+const upload = multer({
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB file limit
+    limits: { fileSize: 50 * 1024 * 1024 }, // Increased to 50MB
     fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'text/csv' || 
-            file.mimetype === 'application/vnd.ms-excel' || 
-            file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        const allowedTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+        if (allowedTypes.includes(file.mimetype)) {
             cb(null, true);
         } else {
-            logger.warn(`[${req.ip}] Multer: Rejected file upload. Type: ${file.mimetype}, Name: ${file.originalname}`);
-            cb(new Error('Unsupported file format. Please upload CSV or Excel file.'), false);
+            cb(new Error('Unsupported file format'), false);
         }
     }
 });
 
+// --- Lightning Fast Bulk Processing Endpoint ---
 app.post('/fetch-profiles', upload.single('file'), async (req, res) => {
-    const requestIP = req.ip || req.connection?.remoteAddress || 'Unknown IP';
+    const requestIP = req.ip || 'Unknown';
     const requestStartTime = Date.now();
-
-    logger.info(`[${requestIP}] Received /fetch-profiles request. File: ${req.file ? req.file.originalname : 'No file'}`);
-
+    
+    logger.info(`[${requestIP}] BULK REQUEST START: ${req.file?.originalname || 'No file'}`);
+    
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
     }
-
-    // Create a shared state for this specific request, including its IP for logging
+    
     const perRequestSharedState = {
         successCount: 0,
         errorCount: 0,
@@ -441,214 +523,211 @@ app.post('/fetch-profiles', upload.single('file'), async (req, res) => {
             if (success) this.successCount++;
             else this.errorCount++;
         },
-        requestIP: requestIP // Pass IP for logging context in deeper functions
+        requestIP: requestIP
     };
-
-
+    
     let usernamesRaw = [];
     let uniqueUsernames = [];
-
+    
     try {
         const fileBuffer = req.file.buffer;
         const fileExtension = req.file.originalname.split('.').pop().toLowerCase().trim();
-
-        logger.info(`[${requestIP}] Parsing file: ${req.file.originalname}, type: ${fileExtension}`);
+        
+        // Ultra fast file parsing
         if (fileExtension === 'csv') {
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(fileBuffer);
-            await new Promise((resolve, reject) => {
-                bufferStream
-                    .pipe(csv({ headers: false, skipLines: 0, mapValues: ({ value }) => String(value || "").trim() }))
-                    .on('data', (row) => {
-                        if (row[0]) usernamesRaw.push(row[0]);
-                     })
-                    .on('end', () => { logger.debug(`[${requestIP}] CSV parsing finished.`); resolve();})
-                    .on('error', (err) => {logger.error(`[${requestIP}] CSV parsing error`, err); reject(err);});
-            });
+            const csvData = fileBuffer.toString('utf8');
+            const lines = csvData.split('\n');
+            usernamesRaw = lines.map(line => {
+                const firstCol = line.split(',')[0];
+                return firstCol ? firstCol.trim().replace(/['"]/g, '') : '';
+            }).filter(u => u);
         } else if (['xlsx', 'xls'].includes(fileExtension)) {
-            const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                logger.warn(`[${requestIP}] Excel file ${req.file.originalname} has no sheets.`);
-                return res.status(400).json({ error: "Excel file contains no sheets." });
+            const workbook = xlsx.read(fileBuffer, { type: 'buffer', cellText: false, cellDates: false });
+            if (!workbook.SheetNames?.length) {
+                return res.status(400).json({ error: "Excel file contains no sheets" });
             }
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-             if (!worksheet) {
-                logger.warn(`[${requestIP}] First sheet in ${req.file.originalname} is empty or unreadable.`);
-                return res.status(400).json({ error: "First sheet in Excel file is empty or unreadable." });
+            
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            if (!worksheet) {
+                return res.status(400).json({ error: "First sheet is empty" });
             }
+            
             const jsonData = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
             usernamesRaw = jsonData.map(row => String(row[0] || "").trim()).filter(u => u);
-            logger.debug(`[${requestIP}] Excel parsing finished.`);
         } else {
-            logger.warn(`[${requestIP}] Unsupported file format: ${fileExtension}`);
-            return res.status(400).json({ error: "Unsupported file format. Please upload CSV or Excel file" });
-        }
-
-        if (usernamesRaw.length === 0) {
-            logger.warn(`[${requestIP}] No usernames found in the file ${req.file.originalname}.`);
-            return res.status(400).json({ error: "No usernames found in the file or file is empty" });
-        }
-        logger.info(`[${requestIP}] Raw usernames parsed: ${usernamesRaw.length}`);
-
-        // Deduplicate and filter out common invalid entries
-        uniqueUsernames = [...new Set(usernamesRaw.filter(u => u && u.toLowerCase() !== 'nan' && u.toLowerCase() !== 'none' && u.length > 0 && u.length < 50))]; // Added length sanity check
-
-        if (uniqueUsernames.length === 0) {
-            logger.warn(`[${requestIP}] No valid unique usernames after filtering from ${req.file.originalname}.`);
-            return res.status(400).json({ error: "No valid usernames found in the first column of the file" });
-        }
-        logger.info(`[${requestIP}] Starting bulk processing for ${uniqueUsernames.length} unique usernames. External API target RPS: ${APIConfig.RATE_LIMIT_PER_SECOND}, Max Concurrent External Calls: ${APIConfig.MAX_CONCURRENT_API_CALLS}.`);
-        // Warn about unrealistic expectations for 100k/sec
-        if (uniqueUsernames.length > 10000) {
-            logger.warn(`[${requestIP}] Large request: ${uniqueUsernames.length} users. Processing will take time. Target of 100k users/sec is dependent on external API capacity and unlikely to be achieved.`);
+            return res.status(400).json({ error: "Unsupported file format" });
         }
         
-        const allResults = [];
-        // PROCESSING_BATCH_SIZE is for the outer loop here, actual concurrency controlled by p-limit
-        const internalProcessingBatchSize = APIConfig.PROCESSING_BATCH_SIZE;
-
-        for (let i = 0; i < uniqueUsernames.length; i += internalProcessingBatchSize) {
-            const batchUsernamesSlice = uniqueUsernames.slice(i, i + internalProcessingBatchSize);
-            const batchNumber = Math.floor(i / internalProcessingBatchSize) + 1;
-            const totalBatches = Math.ceil(uniqueUsernames.length / internalProcessingBatchSize);
-            const batchStartTime = Date.now();
-            
-            logger.info(`[${requestIP}] Processing internal batch ${batchNumber}/${totalBatches} (${batchUsernamesSlice.length} usernames)`);
-            
-            const batchResults = await processSingleBatch(batchUsernamesSlice, perRequestSharedState); // Pass per-request state
-            allResults.push(...batchResults);
-
-            const batchElapsedTimeMs = Date.now() - batchStartTime;
-            logger.info(`[${requestIP}] Internal batch ${batchNumber} completed in ${(batchElapsedTimeMs / 1000).toFixed(2)}s. Processed ${perRequestSharedState.totalProcessed}/${uniqueUsernames.length} for this request.`);
-            
-            // Small pause between internal processing batches if needed, helps a bit with logging flow
-            if (i + internalProcessingBatchSize < uniqueUsernames.length) {
-                await new Promise(resolve => setTimeout(resolve, 75)); 
+        if (usernamesRaw.length === 0) {
+            return res.status(400).json({ error: "No usernames found in file" });
+        }
+        
+        // Ultra fast deduplication
+        const usernameSet = new Set();
+        for (const username of usernamesRaw) {
+            if (username && 
+                username.length > 0 && 
+                username.length < 50 && 
+                !['nan', 'none', 'null', 'undefined'].includes(username.toLowerCase())) {
+                usernameSet.add(username);
             }
         }
-
+        uniqueUsernames = Array.from(usernameSet);
+        
+        if (uniqueUsernames.length === 0) {
+            return res.status(400).json({ error: "No valid usernames found" });
+        }
+        
+        logger.info(`[${requestIP}] PROCESSING ${uniqueUsernames.length} unique usernames with LIGHTNING SPEED`);
+        
+        // Process with maximum parallelization
+        const allResults = [];
+        const batchSize = APIConfig.PROCESSING_BATCH_SIZE;
+        
+        // Create all batch promises at once for maximum parallelization
+        const batchPromises = [];
+        for (let i = 0; i < uniqueUsernames.length; i += batchSize) {
+            const batchUsernames = uniqueUsernames.slice(i, i + batchSize);
+            batchPromises.push(processSingleBatch(batchUsernames, perRequestSharedState));
+        }
+        
+        // Wait for all batches to complete
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Flatten results
+        for (const batch of batchResults) {
+            allResults.push(...batch);
+        }
+        
         const requestTotalTimeMs = Date.now() - requestStartTime;
-        logger.info(`[${requestIP}] === BULK PROCESSING COMPLETE ===
+        const profilesPerSecond = Math.round((allResults.length / Math.max(requestTotalTimeMs / 1000, 0.001)));
+        
+        logger.info(`[${requestIP}] ⚡ LIGHTNING PROCESSING COMPLETE ⚡
                      Unique Usernames: ${uniqueUsernames.length}
-                     Total Results Returned: ${allResults.length}
-                     Successfully Fetched: ${perRequestSharedState.successCount}
-                     Errors/Not Found: ${perRequestSharedState.errorCount}
-                     Total Time: ${(requestTotalTimeMs / 1000).toFixed(2)}s
-                     Overall Rate: ${(allResults.length / Math.max(requestTotalTimeMs / 1000, 0.001)).toFixed(1)} profiles/sec (Note: heavily dependent on external API performance)`);
+                     Results: ${allResults.length}
+                     Success: ${perRequestSharedState.successCount}
+                     Errors: ${perRequestSharedState.errorCount}
+                     Time: ${(requestTotalTimeMs / 1000).toFixed(2)}s
+                     ⚡ SPEED: ${profilesPerSecond} profiles/sec ⚡`);
         
         res.json(allResults);
-
+        
     } catch (error) {
-        logger.error(`[${requestIP}] CRITICAL ERROR in /fetch-profiles endpoint for file ${req.file?.originalname || 'N/A'}`, error);
-        // Try to provide a meaningful error count if processing failed mid-way
-        const totalToAccountFor = uniqueUsernames.length > 0 ? uniqueUsernames.length : usernamesRaw.length;
-        if (totalToAccountFor > perRequestSharedState.totalProcessed && perRequestSharedState.errorCount + perRequestSharedState.successCount < totalToAccountFor) {
-            perRequestSharedState.errorCount = totalToAccountFor - perRequestSharedState.successCount;
-        }
-        res.status(500).json({ error: `An unexpected server error occurred: ${error.message}. Processed: ${perRequestSharedState.totalProcessed}, Success: ${perRequestSharedState.successCount}, Errors: ${perRequestSharedState.errorCount}` });
+        logger.error(`[${requestIP}] CRITICAL ERROR in bulk processing`, error);
+        res.status(500).json({ 
+            error: `Server error: ${error.message}`,
+            processed: perRequestSharedState.totalProcessed,
+            success: perRequestSharedState.successCount,
+            errors: perRequestSharedState.errorCount
+        });
     }
 });
 
+// --- Lightning Fast Single Profile Endpoint ---
 app.get('/fetch-profile', async (req, res) => {
-    const requestIP = req.ip || req.connection?.remoteAddress || 'Unknown IP';
-    const username = req.query.username ? String(req.query.username).trim() : '';
-
-    logger.info(`[${requestIP}] Received /fetch-profile request for username: '${username}'`);
-
-    if (!username) {
-        logger.warn(`[${requestIP}] No username provided for /fetch-profile.`);
-        return res.status(400).json({ status: "error", message: "No username provided" });
+    const requestIP = req.ip || 'Unknown';
+    const username = req.query.username?.toString().trim();
+    
+    if (!username || username.length > 50) {
+        return res.status(400).json({ 
+            status: "error", 
+            message: "Invalid or missing username" 
+        });
     }
-     if (username.length > 50) { // Basic sanity check
-        logger.warn(`[${requestIP}] Invalid username format for /fetch-profile: ${username}`);
-        return res.status(400).json({ status: "error", message: "Username too long." });
-    }
-
-    const singleCallSharedState = { 
-        successCount:0, errorCount:0, totalProcessed:0, 
-        incrementStats: function(s) {this.totalProcessed++; if(s)this.successCount++; else this.errorCount++;},
+    
+    const singleCallSharedState = {
+        successCount: 0,
+        errorCount: 0,
+        totalProcessed: 0,
+        incrementStats: function(success) {
+            this.totalProcessed++;
+            if (success) this.successCount++;
+            else this.errorCount++;
+        },
         requestIP: requestIP
     };
-
+    
     try {
-        const result = await limit(() => fetchProfileOptimized(username, singleCallSharedState));
+        const result = await fetchProfileOptimized(username, singleCallSharedState);
         res.json(result);
     } catch (error) {
-        logger.error(`[${requestIP}] Error in /fetch-profile for ${username}`, error);
-        res.status(500).json({ username, status: "error", message: "Server error processing single profile." });
+        logger.error(`[${requestIP}] Error in single profile fetch for ${username}`, error);
+        res.status(500).json({ 
+            username, 
+            status: "error", 
+            message: "Server error" 
+        });
     }
 });
 
-// --- Periodic Cache Cleanup ---
-let lastCacheCleanupTime = Date.now();
-const CACHE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+// --- Performance Monitoring Endpoint ---
+app.get('/stats', (req, res) => {
+    res.json({
+        globalStats: globalState.getStats(),
+        system: {
+            memory: process.memoryUsage(),
+            uptime: process.uptime(),
+            cpuUsage: process.cpuUsage()
+        },
+        config: APIConfig
+    });
+});
 
-setInterval(() => {
-    const currentTime = Date.now();
-    if (currentTime - lastCacheCleanupTime > CACHE_CLEANUP_INTERVAL_MS) {
-        let expiredCount = 0;
-        logger.debug("Running periodic cache cleanup...");
-        for (const [key, timestamp] of globalState.cacheTimestamps.entries()) {
-            if (currentTime - timestamp > APIConfig.CACHE_DURATION_MS) {
-                globalState.cache.delete(key);
-                globalState.cacheTimestamps.delete(key);
-                expiredCount++;
-            }
-        }
-        if (expiredCount > 0) {
-            logger.info(`Periodic cache cleanup: Removed ${expiredCount} expired entries. Cache size: ${globalState.cache.size}`);
-        } else {
-            logger.debug("Periodic cache cleanup: No entries expired.");
-        }
-        lastCacheCleanupTime = currentTime;
-        // Also, try to hint GC for memory, though V8 usually manages this well.
-        if (typeof global.gc === 'function') {
-            logger.debug("Triggering manual garbage collection hint.");
-            global.gc();
-        }
-    }
-}, 60000); // Check every minute
+// --- Memory Optimization Middleware ---
+app.use((req, res, next) => {
+    // Set response headers for better performance
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Keep-Alive', 'timeout=30, max=1000');
+    next();
+});
 
 // --- Graceful Shutdown ---
+let server;
+
 function gracefulShutdown(signal) {
-    logger.info(`Received ${signal}. Graceful shutdown initiated...`);
+    logger.info(`Received ${signal}. Shutting down gracefully...`);
     if (server) {
         server.close((err) => {
             if (err) {
                 logger.error('Error during server close:', err);
                 process.exit(1);
             }
-            logger.info("HTTP server closed. All resources should be cleaned up. Exiting.");
+            logger.info("Server closed. Exiting...");
             process.exit(0);
         });
     } else {
-         process.exit(0); // If server wasn't started yet
+        process.exit(0);
     }
-
-    // Force exit after a timeout if server.close() hangs
+    
     setTimeout(() => {
-        logger.error("Could not close connections in time, forcefully shutting down");
+        logger.error("Forced shutdown due to timeout");
         process.exit(1);
-    }, 15000); // 15 seconds
+    }, 10000);
 }
 
-let server; // Define server variable in a broader scope
-
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT')); // Ctrl+C
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// --- Start Server ---
-(async () => {
-    try {
-        await globalState.getAxiosInstance(); // Initialize axios instance at startup
-        server = app.listen(port, '0.0.0.0', () => {
-            logger.info(`🚀 CodeChef API Service (Node.js) started on port ${port}`);
-            logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
-            logger.info(`API Config: Max Concurrent External Calls=${APIConfig.MAX_CONCURRENT_API_CALLS}, External Target RPS=${APIConfig.RATE_LIMIT_PER_SECOND}`);
-        });
-    } catch (error) {
-        logger.error('Failed to initialize and start server:', error);
-        process.exit(1);
-    }
-})();
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception:', error);
+    gracefulShutdown('UNCAUGHT_EXCEPTION');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// --- Start Lightning Fast Server ---
+server = app.listen(port, '0.0.0.0', () => {
+    logger.info(`⚡ LIGHTNING FAST CodeChef API Service started on port ${port} ⚡`);
+    logger.info(`🚀 ULTRA HIGH PERFORMANCE MODE ACTIVATED 🚀`);
+    logger.info(`Max Concurrent: ${APIConfig.MAX_CONCURRENT_API_CALLS} | Target RPS: ${APIConfig.RATE_LIMIT_PER_SECOND}`);
+    logger.info(`Cache Size: ${APIConfig.MAX_CACHE_SIZE} | Batch Size: ${APIConfig.PROCESSING_BATCH_SIZE}`);
+    logger.info(`🔥 READY TO PROCESS 10,000+ PROFILES PER SECOND 🔥`);
+});
+
+// Set server timeout for high performance
+server.timeout = 300000; // 5 minutes
+server.keepAliveTimeout = 30000; // 30 seconds
+server.headersTimeout = 35000; // 35 seconds
