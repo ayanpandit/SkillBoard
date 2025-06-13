@@ -40,10 +40,15 @@ export const AuthProvider = ({ children }) => {
       subscription.unsubscribe();
     };
   }, []);
-
   // Regular email/password signup
   const signUp = async (data) => {
-    return supabase.auth.signUp(data);
+    return supabase.auth.signUp({
+      ...data,
+      options: {
+        ...data.options,
+        emailRedirectTo: 'https://skillboard-nit5.onrender.com'
+      }
+    });
   };
 
   // Regular email/password signin
@@ -56,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: 'https://skillboard-nit5.onrender.com/'
+        emailRedirectTo: 'https://skillboard-nit5.onrender.com'
       }
     });
     

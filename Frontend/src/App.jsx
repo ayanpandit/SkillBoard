@@ -34,6 +34,7 @@ import CodeChefLoader from "./components/codechefloder";
 import About from "./components/About";
 import Navbar from "./components/Navbar";
 import Profile from "./components/Profile"; // Import Profile component
+import AuthRedirect from "./components/AuthRedirect"; // Import AuthRedirect component
 import { useAuth } from "./context/AuthContext"; // Import useAuth
 import { Navigate } from 'react-router-dom'; // Import Navigate for protected routes
 
@@ -49,11 +50,12 @@ const AppWrapper = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
         <Route path="/codechefloder" element={<CodeChefLoader />} />
-        <Route path="/About" element={<About />} />
-        <Route 
+        <Route path="/About" element={<About />} />        <Route 
           path="/profile"
           element={<ProtectedRoute><Profile /></ProtectedRoute>}
         />
+        {/* Auth redirect route to handle authentication callbacks */}
+        <Route path="/auth/callback" element={<AuthRedirect />} />
         {/* Add a catch-all route */}
         <Route path="*" element={<HomePage />} />
       </Routes>

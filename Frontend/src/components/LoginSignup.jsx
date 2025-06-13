@@ -45,8 +45,7 @@ const LoginSignup = ({ onClose }) => {
         setError("Passwords do not match.");
         setLoading(false);
         return;
-      }
-      try {
+      }      try {
         // For signup with Supabase, include user metadata with full_name
         const { data, error: signUpError } = await signUp({ 
           email, 
@@ -55,7 +54,7 @@ const LoginSignup = ({ onClose }) => {
             data: {
               full_name: fullName
             },
-            emailRedirectTo: 'https://skillboard-nit5.onrender.com/'
+            emailRedirectTo: 'https://skillboard-nit5.onrender.com'
           }
         });
 
