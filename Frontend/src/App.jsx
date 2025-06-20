@@ -38,20 +38,28 @@ import AuthRedirect from "./components/AuthRedirect"; // Import AuthRedirect com
 import { useAuth } from "./context/AuthContext"; // Import useAuth
 import { Navigate } from 'react-router-dom'; // Import Navigate for protected routes
 import { ToastProvider } from './context/ToastContext'; // Import ToastProvider
+import SEO from './components/SEO'; // Import SEO component
 
 // Helper component to apply conditional background
 const AppWrapper = () => {
   const location = useLocation();
-  const isAnalyzerPage = location.pathname === '/codechefloder' || location.pathname === '/LeetCodeProfileAnalyze';
-
+  const isAnalyzerPage = location.pathname === '/codechefloder' || 
+                          location.pathname === '/LeetCodeProfileAnalyze' || 
+                          location.pathname === '/leetcodeprofileanalyze';
   return (
     <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : 'bg-gray-900'}`}>
-      <Navbar />
-      <Routes>
+      <Navbar /><SEO /><Routes>
         <Route path="/" element={<HomePage />} />
+        {/* Original routes */}
         <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
         <Route path="/codechefloder" element={<CodeChefLoader />} />
-        <Route path="/About" element={<About />} />        <Route 
+        <Route path="/About" element={<About />} />
+
+        {/* Lowercase alternatives for better SEO */}
+        <Route path="/leetcodeprofileanalyze" element={<LeetCodeLoader />} />
+        <Route path="/about" element={<About />} />
+        
+        <Route 
           path="/profile"
           element={<ProtectedRoute><Profile /></ProtectedRoute>}
         />

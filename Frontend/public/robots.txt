@@ -1,10 +1,10 @@
 User-agent: *
 Allow: /
 
-# Important routes
-Allow: /About
+# Important routes - use lowercase paths for consistency
+Allow: /about
 Allow: /profile
-Allow: /LeetCodeProfileAnalyze
+Allow: /leetcodeprofileanalyze
 Allow: /codechefloder
 
 # Feature pages

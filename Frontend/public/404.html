@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirecting... | SkillBoard</title>
+  <script>
+    // Single Page App fallback
+    // This script helps with direct navigation to deep links
+    (function() {
+      // Get the current URL path
+      var path = window.location.pathname;
+      
+      // Remove any uppercase characters (normalize to lowercase)
+      var normalizedPath = path.toLowerCase();
+      
+      // Redirect if needed
+      if (path !== normalizedPath) {
+        window.location.replace(normalizedPath);
+      } else {
+        // Otherwise redirect to the homepage with a route parameter
+        window.location.replace('/' + (path !== '/' ? '?route=' + path.slice(1) : ''));
+      }
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0;url=/">
+</head>
+<body>
+  <p>Redirecting to homepage...</p>
+</body>
+</html>

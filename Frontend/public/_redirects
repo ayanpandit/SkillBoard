@@ -1,5 +1,10 @@
-# SPA fallback
+# SPA fallback - must be the last rule
 /*    /index.html   200
+
+# Normalize case - redirect uppercase to lowercase paths
+/LeetCodeProfileAnalyze /leetcodeprofileanalyze 301
+/CodeChefLoader /codechefloader 301
+/About /about 301
 
 # Redirect HTTP to HTTPS
 http://skillboard.shop/* https://skillboard.shop/:splat 301!
