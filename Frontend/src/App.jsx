@@ -50,15 +50,30 @@ const AppWrapper = () => {
   const isAnalyzerPage = pathname === '/codechefloder' || 
                           pathname === '/leetcodeprofileanalyze';
   
-  // Check if there's a route query parameter and redirect if needed
+  // Check for redirects
   useEffect(() => {
+    // Check if there's a route query parameter and redirect if needed
     const params = new URLSearchParams(location.search);
     const routeParam = params.get('route');
     
     if (routeParam) {
       navigate(`/${routeParam}`, { replace: true });
+      return;
     }
-  }, [location]);
+    
+    // Check if there's a saved redirect path from 404.html
+    const redirectPath = sessionStorage.getItem('redirectPath');
+    if (redirectPath && location.pathname === '/') {
+      // Clear the redirect path from session storage
+      sessionStorage.removeItem('redirectPath');
+      
+      // Normalize to lowercase
+      const normalizedPath = redirectPath.toLowerCase();
+      
+      // Navigate to the saved path
+      navigate(normalizedPath, { replace: true });
+    }
+  }, [location, navigate]);
 
   return (
     <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : 'bg-gray-900'}`}>

@@ -3,29 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redirecting... | SkillBoard</title>
+  <title>SkillBoard</title>
   <script>
-    // Single Page App fallback
-    // This script helps with direct navigation to deep links
+    // Single Page App fallback for direct route access
     (function() {
-      // Get the current URL path
-      var path = window.location.pathname;
+      // Store the URL the user was trying to access
+      sessionStorage.setItem('redirectPath', window.location.pathname);
       
-      // Remove any uppercase characters (normalize to lowercase)
-      var normalizedPath = path.toLowerCase();
-      
-      // Redirect if needed
-      if (path !== normalizedPath) {
-        window.location.replace(normalizedPath);
-      } else {
-        // Otherwise redirect to the index.html to let React Router handle it
-        window.location.replace('/index.html');
-      }
+      // Redirect to the homepage, which will then handle the redirect
+      window.location.replace('/');
     })();
   </script>
-  <meta http-equiv="refresh" content="0;url=/index.html">
 </head>
 <body>
-  <p>Redirecting to homepage...</p>
+  <p>Redirecting to SkillBoard...</p>
 </body>
+</html>
 </html>

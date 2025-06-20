@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "redirects": [
+    { "source": "/LeetCodeProfileAnalyze", "destination": "/leetcodeprofileanalyze", "permanent": true },
+    { "source": "/CodeChefLoader", "destination": "/codechefloder", "permanent": true },
+    { "source": "/About", "destination": "/about", "permanent": true }
+  ]
+}
