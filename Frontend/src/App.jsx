@@ -26,88 +26,78 @@ export default function App() {
     </div>
   );
 }*/
+// ✅ FIXED App.jsx with proper lowercase routing and normalization
 import "./index.css";
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+  Navigate
+} from 'react-router-dom';
 import { useEffect } from 'react';
 import HomePage from "./components/Home";
 import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
 import About from "./components/About";
 import Navbar from "./components/Navbar";
-import Profile from "./components/Profile"; // Import Profile component
-import AuthRedirect from "./components/AuthRedirect"; // Import AuthRedirect component
-import { useAuth } from "./context/AuthContext"; // Import useAuth
-import { Navigate } from 'react-router-dom'; // Import Navigate for protected routes
-import { ToastProvider } from './context/ToastContext'; // Import ToastProvider
-import SEO from './components/SEO'; // Import SEO component
+import Profile from "./components/Profile";
+import AuthRedirect from "./components/AuthRedirect";
+import { useAuth } from "./context/AuthContext";
+import { ToastProvider } from './context/ToastContext';
+import SEO from './components/SEO';
 
-// Helper component to apply conditional background
 const AppWrapper = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  // Use lowercase paths for condition checks
-  const pathname = location.pathname.toLowerCase();
-  const isAnalyzerPage = pathname === '/codechefloder' || 
-                          pathname === '/leetcodeprofileanalyze';
-  
-  // Check for redirects
+
+  const pathname = location.pathname;
+  const isAnalyzerPage = pathname.toLowerCase() === '/codechefloder' || 
+                          pathname.toLowerCase() === '/leetcodeprofileanalyze';
+
   useEffect(() => {
-    // Check if there's a route query parameter and redirect if needed
-    const params = new URLSearchParams(location.search);
-    const routeParam = params.get('route');
-    
-    if (routeParam) {
-      navigate(`/${routeParam}`, { replace: true });
+    const path = location.pathname;
+    if (path !== path.toLowerCase()) {
+      navigate(path.toLowerCase(), { replace: true });
       return;
     }
-    
-    // Check if there's a saved redirect path from 404.html
+
+    const params = new URLSearchParams(location.search);
+    const routeParam = params.get('route');
+    if (routeParam) {
+      navigate(`/${routeParam.toLowerCase()}`, { replace: true });
+      return;
+    }
+
     const redirectPath = sessionStorage.getItem('redirectPath');
-    if (redirectPath && location.pathname === '/') {
-      // Clear the redirect path from session storage
+    if (redirectPath && path === '/') {
       sessionStorage.removeItem('redirectPath');
-      
-      // Normalize to lowercase
-      const normalizedPath = redirectPath.toLowerCase();
-      
-      // Navigate to the saved path
-      navigate(normalizedPath, { replace: true });
+      navigate(redirectPath.toLowerCase(), { replace: true });
     }
   }, [location, navigate]);
 
   return (
     <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : 'bg-gray-900'}`}>
-      <Navbar /><SEO /><Routes>
+      <Navbar />
+      <SEO />
+      <Routes>
         <Route path="/" element={<HomePage />} />
-        {/* Original routes */}
-        <Route path="/LeetCodeProfileAnalyze" element={<LeetCodeLoader />} />
-        <Route path="/codechefloder" element={<CodeChefLoader />} />
-        <Route path="/About" element={<About />} />
-
-        {/* Lowercase alternatives for better SEO */}
         <Route path="/leetcodeprofileanalyze" element={<LeetCodeLoader />} />
+        <Route path="/codechefloder" element={<CodeChefLoader />} />
         <Route path="/about" element={<About />} />
-        
-        <Route 
-          path="/profile"
-          element={<ProtectedRoute><Profile /></ProtectedRoute>}
-        />
-        {/* Auth redirect route to handle authentication callbacks */}
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/auth/callback" element={<AuthRedirect />} />
-        {/* Add a catch-all route */}
         <Route path="*" element={<HomePage />} />
       </Routes>
     </div>
   );
-}
+};
 
-
-// ProtectedRoute component
 const ProtectedRoute = ({ children }) => {
   const { currentUser, loading } = useAuth();
 
   if (loading) {
-    // You can return a loading spinner here if you want
     return <div className="text-center text-white py-10">Loading...</div>;
   }
 
