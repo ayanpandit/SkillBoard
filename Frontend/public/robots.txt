@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Important routes
+Allow: /About
+Allow: /profile
+Allow: /LeetCodeProfileAnalyze
+Allow: /codechefloder
+
+# Feature pages
+Allow: /features/coding-profile-analysis
+Allow: /features/competitive-programming-metrics
+Allow: /features/bulk-candidate-evaluation
+
+# Sitemap
+Sitemap: https://skillboard.shop/sitemap.xml
+
+# Crawl delay to ensure server stability
+Crawl-delay: 1

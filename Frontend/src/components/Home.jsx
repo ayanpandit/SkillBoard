@@ -92,22 +92,23 @@ const HomePage = () => {
             <div
                 className="fixed inset-0 bg-cover bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${bgImage})` }}
-            ></div>
-
-            {/* Scrollable Content */}
+            ></div>            {/* Scrollable Content */}
             <div className="relative z-10 min-h-screen">                {/* Hero Section */}
-                <section className="min-h-screen flex items-center justify-center px-4 py-20 pt-48">
-                    <div className="max-w-7xl mx-auto text-center">
-                        {/* Main Heading */}
+                <section className="min-h-screen flex items-center justify-center px-4 py-20 pt-48" itemScope itemType="https://schema.org/WebPage">
+                    <div className="max-w-7xl mx-auto text-center">                        {/* Main Heading */}
                         <div className="mb-12">
-                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold text-white mb-8 leading-tight">
+                            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold text-white mb-8 leading-tight" itemProp="headline">
                                 <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent animate-pulse">
                                     Skill
                                 </span>
                                 <span className="text-white drop-shadow-2xl">Board</span>
-                            </h1>
-                            <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-gray-200 max-w-4xl mx-auto leading-relaxed mb-12 px-4">
-                                Compare your coding profiles across multiple platforms. Track progress, analyze performance, and level up your competitive programming journey.
+                            </h1>                            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-200 mb-6" itemProp="alternativeHeadline">
+                                Intelligent Coding Profile Analysis for Candidate Evaluation
+                            </h2>
+                            <p className="text-lg sm:text-xl md:text-2xl text-gray-200 max-w-4xl mx-auto leading-relaxed mb-12 px-4" itemProp="description">
+                                SkillBoard empowers recruiters by providing a comprehensive platform to analyze candidates' coding profiles 
+                                from multiple competitive programming platforms like CodeChef and LeetCode. Simplify hiring with data-driven 
+                                insights, performance metrics, and bulk profile search capabilities.
                             </p>
                         </div>
 
@@ -128,35 +129,34 @@ const HomePage = () => {
                             </div>
                         </div>
                     </div>
-                </section>
-
-                {/* Platform Cards Section */}
-                <section id="platforms-section" className="py-16 px-4">
+                </section>                {/* Platform Cards Section */}
+                <section id="platforms-section" className="py-16 px-4" itemScope itemType="https://schema.org/ItemList">
                     <div className="max-w-5xl mx-auto">
                         {/* Section Header */}
                         <div className="text-center mb-12">
-                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6">
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6" itemProp="name">
                                 Supported Platforms
                             </h2>
-                            <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto px-4">
+                            <p className="text-lg sm:text-xl text-gray-300 max-w-3xl mx-auto px-4" itemProp="description">
                                 Currently supporting the most popular competitive programming platforms with more coming soon
                             </p>
-                        </div>
-
-                        {/* Platform Cards */}
+                        </div>                        {/* Platform Cards */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
-                            {platforms.map((platform) => (
+                            {platforms.map((platform, index) => (
                                 <div
                                     key={platform.id}
                                     className={`${platform.bgColor} rounded-2xl p-6 border-2 ${platform.borderColor} transform hover:scale-105 transition-all duration-500 hover:shadow-2xl backdrop-blur-lg bg-opacity-90`}
+                                    itemScope 
+                                    itemType="https://schema.org/SoftwareApplication"
+                                    itemProp="itemListElement"
                                 >
                                     {/* Card Header */}
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center space-x-3">
                                             <div className="text-3xl">{platform.logo}</div>
                                             <div>
-                                                <h3 className="text-xl font-bold text-gray-800">{platform.name}</h3>
-                                                <p className="text-sm text-gray-600 max-w-xs">{platform.description}</p>
+                                                <h3 className="text-xl font-bold text-gray-800" itemProp="name">{platform.name}</h3>
+                                                <p className="text-sm text-gray-600 max-w-xs" itemProp="description">{platform.description}</p>
                                             </div>
                                         </div>
                                         <ExternalLink className="w-5 h-5 text-gray-500 hover:text-gray-700 cursor-pointer transition-colors" />
@@ -211,12 +211,12 @@ const HomePage = () => {
                         </div>
                     </div>
                 </section>                {/* Footer */}
-                <footer id="contact-section" className="mt-12 border-t border-slate-700 pt-8">
+                <footer id="contact-section" className="mt-12 border-t border-slate-700 pt-8" itemScope itemType="https://schema.org/WPFooter">
                     <div className="text-center space-y-6">
                         <div>
                             <h3 className="text-lg font-semibold mb-4 text-slate-300">Connect With Me</h3>
                             <div className="flex justify-center space-x-6">
-                                <a href="https://www.linkedin.com/in/ayan-pandey-b66067296/" target="_blank" rel="noopener noreferrer" className="p-3 bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white rounded-full transition-all duration-300 transform hover:scale-110" aria-label="LinkedIn Profile">
+                                <a href="https://www.linkedin.com/in/ayan-pandey-b66067296/" target="_blank" rel="noopener noreferrer" className="p-3 bg-slate-700 hover:bg-blue-600 text-slate-300 hover:text-white rounded-full transition-all duration-300 transform hover:scale-110" aria-label="LinkedIn Profile" itemProp="sameAs">
                                     <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                                     </svg>
@@ -240,10 +240,9 @@ const HomePage = () => {
                                 </svg>
                                 Send Suggestions
                             </button>
-                        </div>
-                        <div className="text-sm text-slate-500 border-t border-slate-700 pt-4">
+                        </div>                        <div className="text-sm text-slate-500 border-t border-slate-700 pt-4">
                             <p>🌟 Built with passion and a pinch of late-night coffee — by Ayan Pandey 2023-27</p>
-                            <p>© 2025 SkillBoard.</p>
+                            <p itemProp="copyrightNotice">© 2025 SkillBoard.</p>
                         </div>
                     </div>
                 </footer>
