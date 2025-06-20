@@ -1,19 +1,18 @@
 User-agent: *
 Allow: /
 
-# Important routes - use lowercase paths for consistency
+# Lowercase routing for consistency (important for React SPAs)
 Allow: /about
 Allow: /profile
 Allow: /leetcodeprofileanalyze
 Allow: /codechefloder
-
-# Feature pages
+Allow: /features/
 Allow: /features/coding-profile-analysis
 Allow: /features/competitive-programming-metrics
 Allow: /features/bulk-candidate-evaluation
 
-# Sitemap
+# Sitemap declaration
 Sitemap: https://www.skillboard.shop/sitemap.xml
 
-# Crawl delay to ensure server stability
+# Optional: Minimal crawl delay
 Crawl-delay: 1
