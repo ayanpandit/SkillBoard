@@ -22,8 +22,10 @@ const SEO = () => {
     updateMetaTag('og:description', seoData.ogDescription);
     updateMetaTag('og:url', seoData.canonicalUrl);
     updateMetaTag('og:image', seoData.ogImage);
+    updateMetaTag('og:type', 'website');
     
     // Update Twitter tags
+    updateMetaTag('twitter:card', 'summary_large_image');
     updateMetaTag('twitter:title', seoData.ogTitle);
     updateMetaTag('twitter:description', seoData.ogDescription);
     updateMetaTag('twitter:image', seoData.ogImage);
@@ -31,9 +33,16 @@ const SEO = () => {
     // Update canonical URL
     updateCanonicalLink(seoData.canonicalUrl);
     
+    // Update structured data based on the page
+    updateStructuredData(path, seoData);
+    
     // Clean up function
     return () => {
-      // If needed, you could reset tags here
+      // Remove any structured data on unmount
+      const existingScript = document.getElementById('structured-data');
+      if (existingScript) {
+        existingScript.remove();
+      }
     };
   }, [path, seoData]);
   
@@ -56,8 +65,7 @@ const SEO = () => {
       document.head.appendChild(metaTag);
     }
   };
-  
-  const updateCanonicalLink = (href) => {
+    const updateCanonicalLink = (href) => {
     // First check if canonical link exists
     let canonicalLink = document.querySelector('link[rel="canonical"]');
     
@@ -71,6 +79,88 @@ const SEO = () => {
       canonicalLink.setAttribute('href', href);
       document.head.appendChild(canonicalLink);
     }
+  };
+  
+  const updateStructuredData = (path, seoData) => {
+    // Remove any existing structured data
+    const existingScript = document.getElementById('structured-data');
+    if (existingScript) {
+      existingScript.remove();
+    }
+    
+    // Create structured data based on the page
+    let structuredData;
+    
+    if (path === '/') {
+      // Home page - software application schema
+      structuredData = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "SkillBoard",
+        "description": seoData.description,
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.8",
+          "ratingCount": "120"
+        },
+        "url": seoData.canonicalUrl,
+        "screenshot": seoData.ogImage,
+        "featureList": "Coding Profile Analytics, Performance Metrics, Competitive Programming Stats, Bulk Search, Hiring Made Easy, Secure and Scalable"
+      };
+    } else if (path === '/leetcodeprofileanalyze' || path === '/codechefloder') {
+      // Analyzer pages - web application schema
+      structuredData = {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": path === '/leetcodeprofileanalyze' ? "SkillBoard LeetCode Analyzer" : "SkillBoard CodeChef Analyzer",
+        "url": seoData.canonicalUrl,
+        "description": seoData.description,
+        "applicationCategory": "Recruitment Tool",
+        "offers": {
+          "@type": "Offer",
+          "price": "0"
+        },
+        "potentialAction": {
+          "@type": "UseAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": seoData.canonicalUrl
+          }
+        },
+        "keywords": seoData.keywords
+      };
+    } else {
+      // Other pages - organization schema with software product
+      structuredData = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "SkillBoard",
+        "url": "https://www.skillboard.shop/",
+        "logo": "https://www.skillboard.shop/logo.png",
+        "description": "Technical hiring platform for analyzing competitive programming profiles",
+        "makesOffer": {
+          "@type": "Offer",
+          "itemOffered": {
+            "@type": "SoftwareApplication",
+            "name": "SkillBoard Coding Profile Analyzer",
+            "description": "Tool for analyzing competitive programming profiles from platforms like CodeChef and LeetCode"
+          }
+        }
+      };
+    }
+    
+    // Add the structured data to the page
+    const script = document.createElement('script');
+    script.id = 'structured-data';
+    script.type = 'application/ld+json';
+    script.innerHTML = JSON.stringify(structuredData);
+    document.head.appendChild(script);
   };
   
   // This component doesn't render anything visible

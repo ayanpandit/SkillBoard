@@ -18,12 +18,12 @@
       if (path !== normalizedPath) {
         window.location.replace(normalizedPath);
       } else {
-        // Otherwise redirect to the homepage with a route parameter
-        window.location.replace('/' + (path !== '/' ? '?route=' + path.slice(1) : ''));
+        // Otherwise redirect to the index.html to let React Router handle it
+        window.location.replace('/index.html');
       }
     })();
   </script>
-  <meta http-equiv="refresh" content="0;url=/">
+  <meta http-equiv="refresh" content="0;url=/index.html">
 </head>
 <body>
   <p>Redirecting to homepage...</p>

@@ -27,7 +27,8 @@ export default function App() {
   );
 }*/
 import "./index.css";
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import HomePage from "./components/Home";
 import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
@@ -43,9 +44,22 @@ import SEO from './components/SEO'; // Import SEO component
 // Helper component to apply conditional background
 const AppWrapper = () => {
   const location = useLocation();
-  const isAnalyzerPage = location.pathname === '/codechefloder' || 
-                          location.pathname === '/LeetCodeProfileAnalyze' || 
-                          location.pathname === '/leetcodeprofileanalyze';
+  const navigate = useNavigate();
+  // Use lowercase paths for condition checks
+  const pathname = location.pathname.toLowerCase();
+  const isAnalyzerPage = pathname === '/codechefloder' || 
+                          pathname === '/leetcodeprofileanalyze';
+  
+  // Check if there's a route query parameter and redirect if needed
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const routeParam = params.get('route');
+    
+    if (routeParam) {
+      navigate(`/${routeParam}`, { replace: true });
+    }
+  }, [location]);
+
   return (
     <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : 'bg-gray-900'}`}>
       <Navbar /><SEO /><Routes>
