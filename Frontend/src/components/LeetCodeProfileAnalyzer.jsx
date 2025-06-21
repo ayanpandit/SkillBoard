@@ -989,7 +989,9 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
     { key: 'realName', label: 'Real Name', sortable: true, getValue: user => getNestedValue(user, 'profile.realName', 'z').toLowerCase() },
     { key: 'ranking', label: 'Ranking', sortable: true, getValue: user => getNestedValue(user, 'profile.ranking', Infinity) === 'N/A' ? Infinity : parseInt(String(getNestedValue(user, 'profile.ranking', Infinity)).replace(/,/g, '')) },
     { key: 'problemsSolved', label: 'Problems Solved', sortable: true, getValue: user => (getNestedValue(user, 'stats.Easy.solved', 0)) + (getNestedValue(user, 'stats.Medium.solved', 0)) + (getNestedValue(user, 'stats.Hard.solved', 0)) },
-    { key: 'problemsDetail', label: 'E/M/H Breakdown', sortable: false },
+    { key: 'easy', label: 'Easy', sortable: true, getValue: user => getNestedValue(user, 'stats.Easy.solved', 0) },
+    { key: 'medium', label: 'Medium', sortable: true, getValue: user => getNestedValue(user, 'stats.Medium.solved', 0) },
+    { key: 'hard', label: 'Hard', sortable: true, getValue: user => getNestedValue(user, 'stats.Hard.solved', 0) },
     { key: 'badgesEarned', label: 'Badges Earned', sortable: true, getValue: user => getNestedValue(user, 'badges.summary.totalEarned', 0) },
     { key: 'activeDays', label: 'Active Days', sortable: true, getValue: user => getNestedValue(user, 'activity.totalActiveDays', 0) },
     { key: 'contests', label: 'Contests', sortable: true, getValue: user => getNestedValue(user, 'contests.summary.totalAttended', 0) },
@@ -1151,6 +1153,31 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
     setError('');
   };
 
+  useEffect(() => {
+    const handleInitialFile = async () => {
+      if (initialFileUrl && initialFileName && !lastSearchedFile) {
+        try {
+          const response = await fetch(initialFileUrl);
+          const blob = await response.blob();
+          const file = new File([blob], initialFileName, { type: blob.type });
+          
+          // Create a fake event object with the file
+          const fakeEvent = {
+            target: {
+              files: [file]
+            }
+          };
+          
+          handleBulkSearch(fakeEvent);
+        } catch (error) {
+          console.error('Error handling initial file:', error);
+          setError('Error loading the file. Please try uploading manually.');
+        }
+      }
+    };
+
+    handleInitialFile();
+  }, [initialFileUrl, initialFileName]);
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8 font-sans">
@@ -1276,16 +1303,14 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
                       key={user.username + index} // Make key more unique if usernames can repeat from different sources
                       onClick={() => { setSelectedUser(user); setSelectedHeatmapYear(new Date().getFullYear()); }}
                       className={`border-b border-slate-700 cursor-pointer transition-colors ${contestRowClass || baseErrorClass || 'hover:bg-slate-700/70'}`}
-                    >
-                      <td className="px-5 py-4">{index + 1}</td>
+                    >                      <td className="px-5 py-4">{index + 1}</td>
                       <td className="px-5 py-4 font-medium text-sky-400 break-all">{user.username}</td>
                       <td className="px-5 py-4">{getNestedValue(user, 'profile.realName')}</td>
                       <td className="px-5 py-4">{getNestedValue(user, 'profile.ranking')}</td>
-                      <td className="px-5 py-4">{solvedEMH}</td>                      <td className="px-5 py-4">
-                        <span className="text-green-400">easy-{getNestedValue(user, 'stats.Easy.solved', 0)}</span>, {' '}
-                        <span className="text-yellow-400">medium-{getNestedValue(user, 'stats.Medium.solved', 0)}</span>, {' '}
-                        <span className="text-red-400">hard-{getNestedValue(user, 'stats.Hard.solved', 0)}</span>
-                      </td>
+                      <td className="px-5 py-4">{solvedEMH}</td>
+                      <td className="px-5 py-4">{getNestedValue(user, 'stats.Easy.solved', 0)}</td>
+                      <td className="px-5 py-4">{getNestedValue(user, 'stats.Medium.solved', 0)}</td>
+                      <td className="px-5 py-4">{getNestedValue(user, 'stats.Hard.solved', 0)}</td>
                       <td className="px-5 py-4">{getNestedValue(user, 'badges.summary.totalEarned', 0)}</td>
                       <td className="px-5 py-4">{getNestedValue(user, 'activity.totalActiveDays', 0)}</td>
                       <td className="px-5 py-4">{getNestedValue(user, 'contests.summary.totalAttended', 0)}</td>

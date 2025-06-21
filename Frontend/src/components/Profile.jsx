@@ -321,9 +321,8 @@ const Profile = () => {
                 </button>
                 
                 <button 
-                  onClick={() => {
-                    // Navigate to LeetCode analyzer with file URL for bulk upload
-                    navigate('/LeetCodeProfileAnalyze', { state: { fileUrl: popupFile.url, fileName: popupFile.name } });
+                  onClick={() => {                    // Navigate to LeetCode analyzer with file URL for bulk upload
+                    navigate('/leetcodeloder', { state: { fileUrl: popupFile.url, fileName: popupFile.name } });
                     setShowPopup(false);
                   }}
                   className="w-full py-2 px-4 bg-orange-600 text-white rounded-md hover:bg-orange-500 transition flex items-center justify-center"
