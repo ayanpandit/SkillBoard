@@ -62,6 +62,27 @@ const HomePage = () => {
                 users: '1M+',
                 difficulty: 'Easy to Hard'
             }
+        },
+        {
+            id: 'CodeForces',
+            name: 'CodeFoces',
+            description: 'competative coding interview preparation platform with algorithmic challenges',
+            logo: '🧠',
+            color: 'from-orange-500 to-red-600',
+            bgColor: 'bg-gradient-to-br from-orange-50 to-red-50',
+            borderColor: 'border-orange-200',
+            features: [
+                { icon: Trophy, text: 'Heatmap' },
+                { icon: Users, text: 'Userifo' },
+                { icon: Star, text: 'Stars' },
+                { icon: Code2, text: 'Manymore'}
+            ],
+            stats: {
+                contests: '300+',
+                problems: '2500+',
+                users: '1M+',
+                difficulty: 'Easy to Hard'
+            }
         }
     ];
 
@@ -76,6 +97,9 @@ const HomePage = () => {
             navigate('/codechefloder');
         } else if (platformId === 'leetcode') {
             navigate('/LeetCodeProfileAnalyze');
+        }
+        else if (platformId === 'CodeForces') {
+            navigate('/codeforcesloder');
         }
     };
 
