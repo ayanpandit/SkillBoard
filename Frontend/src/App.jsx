@@ -40,6 +40,7 @@ import { useEffect } from 'react';
 import HomePage from "./components/Home";
 import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
+import CodeForcesLoader from "./components/codeforcesloder";
 import About from "./components/About";
 import Navbar from "./components/Navbar";
 import Profile from "./components/Profile";
@@ -53,7 +54,8 @@ const AppWrapper = () => {
   const navigate = useNavigate();
 
   const pathname = location.pathname;  const isAnalyzerPage = pathname.toLowerCase() === '/codechefloder' || 
-                          pathname.toLowerCase() === '/leetcodeloder';
+                          pathname.toLowerCase() === '/leetcodeloder' ||
+                          pathname.toLowerCase() === '/codeforcesloder';
 
   useEffect(() => {
     const path = location.pathname;
@@ -84,6 +86,7 @@ const AppWrapper = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/leetcodeloder" element={<LeetCodeLoader />} />
         <Route path="/codechefloder" element={<CodeChefLoader />} />
+        <Route path="/codeforcesloder" element={<CodeForcesLoader />} />
         <Route path="/about" element={<About />} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />        <Route path="/auth/callback" element={<AuthRedirect />} />
         <Route path="/leetcodeprofileanalyze" element={<Navigate to="/leetcodeloder" replace />} />
