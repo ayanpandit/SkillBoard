@@ -23,8 +23,17 @@ export default defineConfig({
     host: '0.0.0.0',
     port: parseInt(process.env.PORT) || 4173,
   },
-  // Add this for proper SPA routing
+  // Add this for proper SPA routing and local API proxy
   server: {
     historyApiFallback: true,
+    // ===== DO NOT EDIT BELOW: Local API proxy for development =====
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000', // Change to your backend URL if needed
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+    // ===== DO NOT EDIT ABOVE =====
   }
 })
