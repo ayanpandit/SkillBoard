@@ -6,12 +6,12 @@ import CodeForcesProfileAnalyzer from './CodeForcesProfileAnalyzer'; // Import t
 const PulsatingLoader = ({ text = "Loading..." }) => (
     <div className="flex flex-col items-center justify-center h-full">
         <div className="relative">
-            <div className="w-20 h-20 border-4 border-dashed rounded-full animate-spin border-orange-500"></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-orange-400 text-xs font-semibold">
+            <div className="w-20 h-20 border-4 border-dashed rounded-full animate-spin border-blue-500"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-blue-400 text-xs font-semibold">
                 CodeForces
             </div>
         </div>
-        <p className="mt-6 text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-green-400 animate-pulse">
+        <p className="mt-6 text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-blue-400 to-red-400 animate-pulse">
             {text}
         </p>
     </div>

@@ -67,6 +67,14 @@ const Navbar = () => {    const navigate = useNavigate();
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Close mobile menu when dropdown changes
+    useEffect(() => {
+        if (openDropdown === '' && isMenuOpen) {
+            // Optional: you can close mobile menu when dropdown closes
+            // setIsMenuOpen(false);
+        }
+    }, [openDropdown, isMenuOpen]);
+
     const scrollToCards = () => {
         const cardsSection = document.getElementById('platforms-section');
         cardsSection?.scrollIntoView({
@@ -112,7 +120,8 @@ const Navbar = () => {    const navigate = useNavigate();
             isDropdown: true,
             subItems: [
                 { name: 'CodeChef', action: () => handleAnalyzerNavigation('/codechefloder') },
-                { name: 'LeetCode', action: () => handleAnalyzerNavigation('/LeetCodeProfileAnalyze') }
+                { name: 'LeetCode', action: () => handleAnalyzerNavigation('/LeetCodeProfileAnalyze') },
+                { name: 'CodeForces', action: () => handleAnalyzerNavigation('/codeforcesloder') }
             ]
         },
         { name: 'About', icon: User, action: () => navigate('/About') },        { name: 'Contact', icon: Phone, action: () => {
@@ -178,7 +187,13 @@ const Navbar = () => {    const navigate = useNavigate();
                             {navItems.map((item) => (
                                 <div key={item.name} className="dropdown-container relative">
                                     <button
-                                        onClick={() => item.isDropdown ? handleDropdownClick(item.name) : item.action()}
+                                        onClick={() => {
+                                            if (item.isDropdown) {
+                                                handleDropdownClick(item.name);
+                                            } else {
+                                                item.action();
+                                            }
+                                        }}
                                         className="text-white hover:text-purple-400 transition-colors duration-200 flex items-center space-x-1 group"
                                     >
                                         <item.icon className="w-4 h-4" />
@@ -249,7 +264,13 @@ const Navbar = () => {    const navigate = useNavigate();
                         {/* Mobile menu button */}
                         <div className="md:hidden">
                             <button
-                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                onClick={() => {
+                                    setIsMenuOpen(!isMenuOpen);
+                                    if (isMenuOpen) {
+                                        // Close any open dropdowns when closing mobile menu
+                                        setOpenDropdown('');
+                                    }
+                                }}
                                 className="inline-flex items-center justify-center p-2 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
                             >
                                 {isMenuOpen ? (
@@ -275,7 +296,9 @@ const Navbar = () => {    const navigate = useNavigate();
                                     {item.isDropdown ? (
                                         <>
                                             <button
-                                                onClick={() => handleDropdownClick(item.name)}
+                                                onClick={() => {
+                                                    handleDropdownClick(item.name);
+                                                }}
                                                 className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
                                                 style={{
                                                     animationDelay: `${index * 100}ms`,
@@ -286,7 +309,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                                 <span className="font-medium group-hover:text-purple-400 transition-colors flex-1 text-left">
                                                     {item.name}
                                                 </span>
-                                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openDropdown === item.name ? 'rotate-180' : ''}`} />
+                                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 group-hover:text-purple-400 ${openDropdown === item.name ? 'rotate-180' : ''}`} />
                                             </button>
                                             
                                             {/* Mobile Dropdown Menu */}
@@ -297,9 +320,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                                         onClick={() => {
                                                             setIsMenuOpen(false);
                                                             setOpenDropdown('');
-                                                            setTimeout(() => {
-                                                                handleAnalyzerNavigation(subItem.action()); // Using handleAnalyzerNavigation
-                                                            }, 100);
+                                                            subItem.action();
                                                         }}
                                                         className="w-full px-4 py-2 rounded-lg text-left text-white hover:bg-white/10 transition-colors duration-200"
                                                     >
