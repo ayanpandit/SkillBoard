@@ -48,6 +48,8 @@ const About = () => {
       setShowScrollTop(window.scrollY > 400);
     };
     window.addEventListener('scroll', handleScroll);
+    //delere
+    
 
     return () => {
       observer.disconnect();
