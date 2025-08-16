@@ -10,12 +10,18 @@ import {
 
 const IS_PRODUCTION = import.meta.env.PROD;
 
-const API_URL = IS_PRODUCTION 
-  ? 'https://leetcodebackend-zjtf.onrender.com/api/leetcode'
+
+// Old LeetCode backend (suspended)
+// const API_URL_OLD = 'https://leetcodebackend-zjtf.onrender.com/api/leetcode';
+// const API_BULK_URL_OLD = 'https://leetcodebackend-zjtf.onrender.com/api/leetcode/bulk';
+
+// New LeetCode backend (active)
+const API_URL = IS_PRODUCTION
+  ? 'https://skillboard-leetcode.onrender.com/api/leetcode'
   : 'http://localhost:3000/api/leetcode';
 
 const API_BULK_URL = IS_PRODUCTION
-  ? 'https://leetcodebackend-zjtf.onrender.com/api/leetcode/bulk'
+  ? 'https://skillboard-leetcode.onrender.com/api/leetcode/bulk'
   : 'http://localhost:3000/api/leetcode/bulk';
 
 
