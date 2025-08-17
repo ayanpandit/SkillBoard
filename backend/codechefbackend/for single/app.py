@@ -15,20 +15,64 @@ CACHE_DURATION = 3600  # 1 hour in seconds
 
 def scrape_codechef_profile(username):
     url = f"https://www.codechef.com/users/{username}"
+    
+    # More realistic headers that mimic a real browser
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Sec-Ch-Ua": '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
         "DNT": "1",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1"
+        "Connection": "keep-alive"
     }
     
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        # Add a longer timeout and retry mechanism
+        import time
+        
+        # Try multiple times with slight delays
+        for attempt in range(3):
+            try:
+                response = requests.get(url, headers=headers, timeout=15)
+                
+                if response.status_code == 200:
+                    break
+                    
+                # If we get blocked, wait a bit and try again
+                if response.status_code in [429, 403, 503]:
+                    time.sleep(2 * (attempt + 1))  # Progressive delay
+                    continue
+                    
+            except requests.exceptions.Timeout:
+                if attempt < 2:  # Don't wait on the last attempt
+                    time.sleep(1)
+                    continue
+                else:
+                    return {"error": f"Request timeout for username '{username}'. CodeChef might be slow."}
+            except requests.exceptions.RequestException as e:
+                if attempt < 2:
+                    time.sleep(1)
+                    continue
+                else:
+                    return {"error": f"Network error: {str(e)}"}
+        
         if response.status_code != 200:
             return {"error": f"Unable to fetch profile for '{username}'. HTTP Status: {response.status_code}"}
+        
+        # Log the response for debugging (remove this in production)
+        print(f"DEBUG: Response status: {response.status_code}")
+        print(f"DEBUG: Response length: {len(response.text)}")
+        print(f"DEBUG: First 500 chars: {response.text[:500]}")
         
         soup = BeautifulSoup(response.text, "html.parser")
         page_text = response.text
@@ -478,9 +522,38 @@ def health_check():
         "message": "CodeChef Profile Analyzer API is running",
         "endpoints": {
             "profile": "/api/profile/<username>",
-            "example": "/api/profile/gennady"
+            "example": "/api/profile/gennady",
+            "debug": "/debug/<username>"
         }
     })
+
+# Debug endpoint to test raw HTML response
+@app.route('/debug/<username>')
+def debug_profile(username):
+    url = f"https://www.codechef.com/users/{username}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    
+    try:
+        import requests
+        response = requests.get(url, headers=headers, timeout=15)
+        return jsonify({
+            "status_code": response.status_code,
+            "content_length": len(response.text),
+            "headers": dict(response.headers),
+            "first_1000_chars": response.text[:1000],
+            "url": url,
+            "request_headers": headers
+        })
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "url": url,
+            "request_headers": headers
+        })
 
 if __name__ == '__main__':
     import os
