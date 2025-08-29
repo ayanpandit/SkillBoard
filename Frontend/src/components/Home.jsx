@@ -222,10 +222,10 @@ const HomePage = () => {
                             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 max-w-2xl mx-auto">
                                 <h3 className="text-xl font-bold text-white mb-4">More Platforms Coming Soon</h3>
                                 <p className="text-gray-300 mb-4 text-sm">
-                                    We're working on adding support for Codeforces, HackerRank, AtCoder, and more!
+                                    We're working on adding support for HackerRank, AtCoder, and more!
                                 </p>
                                 <div className="flex flex-wrap justify-center gap-2">
-                                    {['Codeforces', 'HackerRank', 'AtCoder', 'TopCoder'].map((platform) => (
+                                    {['HackerRank', 'AtCoder', 'TopCoder'].map((platform) => (
                                         <span key={platform} className="px-3 py-1 bg-white/20 text-white rounded-full text-xs">
                                             {platform}
                                         </span>
