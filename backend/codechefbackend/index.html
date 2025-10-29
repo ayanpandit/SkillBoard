@@ -5,9 +5,13 @@
 </head>
 <body>
   <h2>CodeChef User Data Fetcher</h2>
+  <p>This endpoint now returns a richer dataset in a single request, including:
+    <strong>full_name</strong>, <strong>rating</strong>, <strong>global_rank</strong>, <strong>country_rank</strong>, <strong>stars</strong>,
+    <strong>problems_solved</strong>, <strong>contest_history</strong>, and <strong>scraped_at</strong>.
+  </p>
 
   <label>Enter Backend URL (e.g., https://your-backend.onrender.com/api/codechef):</label><br>
-  <input type="text" id="backendUrl" placeholder="Enter your hosted backend URL" size="60" value="http://127.0.0.1:5000/api/codechef"><br><br>
+  <input type="text" id="backendUrl" placeholder="Enter your hosted backend URL" size="60" value="https://codechef-d657.onrender.com/api/codechef"><br><br>
 
   <label>Enter CodeChef Username:</label><br>
   <input type="text" id="username" placeholder="Enter username"><br><br>

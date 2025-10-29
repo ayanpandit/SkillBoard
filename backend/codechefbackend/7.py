@@ -1,17 +1,11 @@
-from flask import Flask, request, jsonify
-from bs4 import BeautifulSoup
+#!/usr/bin/env python3
 import requests
+from bs4 import BeautifulSoup
 import re
 import json
 from datetime import datetime
-from flask_cors import CORS
-
-app = Flask(__name__)
-CORS(app)  # Enable cross-origin requests from your frontend
 
 class CodeChefScraper:
-    """Single-request CodeChef profile scraper returning a rich dataset."""
-
     def __init__(self):
         self.base_url = "https://www.codechef.com"
         self.session = requests.Session()
@@ -21,31 +15,34 @@ class CodeChefScraper:
             'Accept-Language': 'en-US,en;q=0.5',
         })
 
-    # Backward-compatible name used by the API
-    def get_user_data(self, username):
-        return self.scrape_user_data(username)
-
     def scrape_user_data(self, username):
-        """Fetch all CodeChef data in ONE page request to avoid rate limits."""
+        """Fetch all CodeChef data in ONE page request to avoid rate limits.
+
+        Data included: full_name, rating, global_rank, country_rank, stars,
+        problems_solved, contest_history. Only a single HTTP GET is performed
+        and all fields are parsed from the same HTML response.
+        """
         try:
             url = f"{self.base_url}/users/{username}"
+            print(f"🌐 Fetching: {url}\n")
+
             response = self.session.get(url, timeout=20)
             if response.status_code == 404:
-                return {"error": "User not found"}
-            if response.status_code != 200:
-                return {"error": f"HTTP Error {response.status_code}"}
+                return {"error": "❌ User not found"}
+            elif response.status_code != 200:
+                return {"error": f"❌ HTTP Error: {response.status_code}"}
 
             html = response.text
-            soup = BeautifulSoup(html, 'html.parser')
+            soup = BeautifulSoup(html, "html.parser")
 
-            # Main stats
+            # Extract main stats
             rating, global_rank, country_rank = self._extract_main_stats(soup, html)
-            # Full name
+            # Extract full name (single pass - no extra requests)
             full_name = self._get_full_name(soup, username)
-            # Stars & problems solved
+            # Extract stars and problems solved
             stars = self._get_stars(soup)
             problems_solved = self._get_problems_solved(html, soup)
-            # Contest history
+            # Extract contest history
             contests = self._extract_contest_details(soup)
 
             return {
@@ -57,8 +54,9 @@ class CodeChefScraper:
                 "stars": stars,
                 "problems_solved": problems_solved,
                 "contest_history": contests,
-                "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
+
         except requests.exceptions.RequestException as e:
             return {"error": f"Network error: {str(e)}"}
         except Exception as e:
@@ -69,6 +67,7 @@ class CodeChefScraper:
     # ---------------------------
 
     def _extract_main_stats(self, soup, html):
+        """Extract rating, global rank, and country rank from profile page"""
         rating = self._find_rating_near_label(soup, html)
         global_rank = self._find_rank_by_label(soup, "Global Rank")
         country_rank = self._get_country_rank(soup)
@@ -77,6 +76,7 @@ class CodeChefScraper:
         rating = rating if rating else "N/A"
         global_rank = global_rank if global_rank else "N/A"
         country_rank = country_rank if country_rank else "N/A"
+
         return rating, global_rank, country_rank
 
     def _norm_num(self, s):
@@ -87,6 +87,7 @@ class CodeChefScraper:
         return m.group(1) if m else None
 
     def _find_rating_near_label(self, soup, html):
+        """Find the large rating number above 'CodeChef Rating' label"""
         label_nodes = soup.find_all(string=re.compile(r'CodeChef\s*Rating', re.I))
         for node in label_nodes:
             parent = node.parent
@@ -112,6 +113,7 @@ class CodeChefScraper:
         return m.group(2) if m else None
 
     def _find_rank_by_label(self, soup, label_text):
+        """Find global/country rank by label proximity"""
         nodes = soup.find_all(string=re.compile(label_text, re.I))
         for node in nodes:
             parent = node.parent
@@ -133,11 +135,13 @@ class CodeChefScraper:
         return self._norm_num(m.group(1)) if m else None
 
     # ---------------------------
-    #  Stars, Problems, Name
+    #  Stars & Problems Solved Extraction
     # ---------------------------
 
     def _get_full_name(self, soup, username):
+        """Best-effort full name extraction using multiple DOM fallbacks."""
         try:
+            # Method 1: From header h1 inside user details container
             header = soup.find('header', class_='user-details-container')
             if header:
                 name_h1 = header.find('h1')
@@ -146,12 +150,16 @@ class CodeChefScraper:
                     full_name = re.sub(r'\([^)]*\)', '', full_name).strip()
                     if full_name and full_name.lower() != username.lower():
                         return full_name
+
+            # Method 2: H1 with h2-style class seen on some layouts
             name_elem = soup.find('h1', class_='h2-style')
             if name_elem:
                 full_name = name_elem.get_text(strip=True)
                 full_name = re.sub(r'\([^)]*\)', '', full_name).strip()
                 if full_name and full_name.lower() != username.lower():
                     return full_name
+
+            # Method 3: User details section -> first h1
             user_section = soup.find('section', class_='user-details')
             if user_section:
                 h1 = user_section.find('h1')
@@ -162,10 +170,13 @@ class CodeChefScraper:
                         return full_name
         except Exception:
             pass
+
         return "N/A"
 
     def _get_country_rank(self, soup):
+        """Extract country rank using multiple DOM fallbacks (ported from 4.py)."""
         try:
+            # Method 1: From rating-ranks section links
             rank_section = soup.find('div', class_='rating-ranks')
             if rank_section:
                 links = rank_section.find_all('a')
@@ -175,6 +186,8 @@ class CodeChefScraper:
                         rank_match = re.search(r'(\d+)', text)
                         if rank_match:
                             return rank_match.group(1)
+
+            # Method 2: Look for explicit label "Country Rank"
             label_node = soup.find(string=re.compile(r'Country Rank', re.IGNORECASE))
             if label_node:
                 parent = label_node.find_parent()
@@ -183,6 +196,8 @@ class CodeChefScraper:
                         txt = elem.get_text(strip=True)
                         if txt.isdigit():
                             return txt
+
+            # Method 3: Rating widgets layout
             widgets = soup.find_all('div', class_='rating-widget')
             for widget in widgets:
                 title = widget.find('div', class_='rating-title')
@@ -190,6 +205,8 @@ class CodeChefScraper:
                     rn = widget.find('div', class_='rating-number')
                     if rn:
                         return rn.get_text(strip=True)
+
+            # Method 4: strong tags with parent context mentioning country
             for strong in soup.find_all('strong'):
                 parent_text = strong.parent.get_text().lower() if strong.parent else ''
                 if 'country' in parent_text:
@@ -272,8 +289,8 @@ class CodeChefScraper:
                 if contests:
                     break
             contests = sorted(contests, key=lambda x: x.get('date', ''), reverse=True)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"❌ Contest extraction error: {e}")
         return contests
 
     def _format_date(self, date_str):
@@ -281,18 +298,65 @@ class CodeChefScraper:
             if isinstance(date_str, str):
                 return date_str.split()[0] if ' ' in date_str else date_str
             return str(date_str)
-        except Exception:
+        except:
             return "N/A"
 
-@app.route('/api/codechef', methods=['GET'])
-def get_codechef_data():
-    username = request.args.get('username')
+    # ---------------------------
+    #  Display
+    # ---------------------------
+
+    def display_user_data(self, data):
+        if "error" in data:
+            print(f"\n{data['error']}\n")
+            return
+
+        print("\n" + "=" * 100)
+        print(f"{'CODECHEF PROFILE SUMMARY':^100}")
+        print("=" * 100)
+        print(f"👤 Username     : {data['username']}")
+        print(f"🪪 Full Name    : {data.get('full_name', 'N/A')}")
+        print(f"📈 Rating       : {data['rating']}")
+        print(f"⭐ Stars        : {data.get('stars', '0★')}")
+        print(f"✅ Problems Solved: {data.get('problems_solved', 0)}")
+        print(f"🌍 Global Rank  : {data['global_rank']}")
+        print(f"🇮🇳 Country Rank : {data['country_rank']}")
+        print(f"🕒 Scraped At   : {data['scraped_at']}")
+        print("=" * 100)
+
+        contest_list = data.get("contest_history", [])
+        if contest_list:
+            print(f"\n{'Contest Name':<45} {'Rating':<10} {'Rank':<10} {'Date':<15}")
+            print("-" * 100)
+            for c in contest_list:
+                print(f"{c['name'][:43]:<45} {str(c['rating']):<10} {str(c['rank']):<10} {c['date']:<15}")
+            print("=" * 100)
+        else:
+            print("\nNo contest history found.\n")
+
+
+# ---------------------------
+#  Main Runner
+# ---------------------------
+
+def main():
+    print("\n" + "=" * 100)
+    print(f"{'CODECHEF FULL SCRAPER':^100}")
+    print("=" * 100 + "\n")
+
+    username = input("📝 Enter CodeChef Username: ").strip()
     if not username:
-        return jsonify({"error": "Username is required"}), 400
+        print("❌ Username required!\n")
+        return
 
     scraper = CodeChefScraper()
-    data = scraper.get_user_data(username)
-    return jsonify(data)
+    data = scraper.scrape_user_data(username)
+    scraper.display_user_data(data)
+
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n⚠️ Interrupted by user\n")
+    except Exception as e:
+        print(f"\n❌ Error: {str(e)}\n")
