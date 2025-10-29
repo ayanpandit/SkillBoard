@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CodeChef User Stats</title>
+</head>
+<body>
+  <h2>CodeChef User Data Fetcher</h2>
+
+  <label>Enter Backend URL (e.g., https://your-backend.onrender.com/api/codechef):</label><br>
+  <input type="text" id="backendUrl" placeholder="Enter your hosted backend URL" size="60" value="http://127.0.0.1:5000/api/codechef"><br><br>
+
+  <label>Enter CodeChef Username:</label><br>
+  <input type="text" id="username" placeholder="Enter username"><br><br>
+
+  <button onclick="fetchData()">Get Data</button>
+
+  <h3>Result:</h3>
+  <pre id="result"></pre>
+
+  <script>
+    async function fetchData() {
+      const backend = document.getElementById('backendUrl').value.trim();
+      const username = document.getElementById('username').value.trim();
+      const resultBox = document.getElementById('result');
+      resultBox.textContent = "Fetching data...";
+
+      if (!backend || !username) {
+        resultBox.textContent = "⚠️ Please enter both backend URL and username!";
+        return;
+      }
+
+      try {
+        const res = await fetch(`${backend}?username=${username}`);
+        const data = await res.json();
+        resultBox.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        resultBox.textContent = "❌ Error fetching data: " + err;
+      }
+    }
+  </script>
+</body>
+</html>

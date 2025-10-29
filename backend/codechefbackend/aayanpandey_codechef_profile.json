@@ -1,0 +1,19 @@
+{
+    "username": "aayanpandey",
+    "profile_url": "https://www.codechef.com/users/aayanpandey",
+    "basic_info": {
+        "country": "India",
+        "organization": "N/A",
+        "stars": "0★"
+    },
+    "ratings": {},
+    "statistics": {
+        "contests_participated": "No. of Contests Participated: 21"
+    },
+    "contest_ratings": {},
+    "recent_activity": {
+        "error": "Activity extraction error: 'str' object has no attribute 'get'"
+    },
+    "badges": [],
+    "scraped_at": "2025-10-29 07:13:01"
+}
