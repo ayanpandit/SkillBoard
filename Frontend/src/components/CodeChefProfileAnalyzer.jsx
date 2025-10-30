@@ -1,7 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import axios from 'axios';
+import * as XLSX from 'xlsx';
 import {
   Search, Loader2, X, ChevronDown, ChevronUp, User, Award, Trophy, Star,
-  TrendingUp, Calendar
+  TrendingUp, Calendar, Download, RotateCcw, UploadCloud, CheckCircle, 
+  AlertTriangle, UserCircle
 } from 'lucide-react';
 
 const IS_PRODUCTION = import.meta.env.PROD;
@@ -48,78 +51,285 @@ const Section = ({ title, children, icon, defaultOpen = false }) => {
 
 function CodeChefProfileAnalyzer() {
   const [usernameInput, setUsernameInput] = useState('');
-  const [userData, setUserData] = useState(null);
+  const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [totalToProcess, setTotalToProcess] = useState(0);
+  const [lastSearchedUsernames, setLastSearchedUsernames] = useState([]);
+  const [lastSearchedFile, setLastSearchedFile] = useState(null);
 
-  const handleSearch = useCallback(async () => {
-    const username = usernameInput.trim();
-    if (!username) {
-      setError('Please enter a username.');
+  const [sortConfig, setSortConfig] = useState({ key: 'sno', direction: 'ascending' });
+  const [filterUsername, setFilterUsername] = useState('');
+  const [filterName, setFilterName] = useState('');
+
+  // Helper to safely get nested values
+  const getNestedValue = (obj, path, defaultValue = 'N/A') => {
+    const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    return (value === undefined || value === null || value === '') ? defaultValue : value;
+  };
+
+  // Fetch single user data
+  const fetchSingleUserData = useCallback(async (username) => {
+    try {
+      const response = await axios.get(`${API_URL}?username=${encodeURIComponent(username)}`);
+      return { username, ...response.data };
+    } catch (err) {
+      console.error(`Error fetching data for ${username}:`, err);
+      return { username, error: err.response?.data?.error || 'Failed to fetch data' };
+    }
+  }, []);
+
+  // Fetch bulk user data
+  const fetchBulkUserData = async (usernames) => {
+    const results = [];
+    for (let i = 0; i < usernames.length; i++) {
+      const result = await fetchSingleUserData(usernames[i]);
+      results.push(result);
+      setProcessingProgress(i + 1);
+    }
+    return results;
+  };
+
+  // Process usernames (single or bulk)
+  const processUsernames = async (usernamesToFetch) => {
+    if (!usernamesToFetch || usernamesToFetch.length === 0) {
+      setError('Please provide at least one username.');
       return;
     }
 
     setIsLoading(true);
     setError('');
-    setUserData(null);
+    setSearchResults([]);
+    setTotalToProcess(usernamesToFetch.length);
+    setProcessingProgress(0);
 
-    try {
-      const response = await fetch(`${API_URL}?username=${encodeURIComponent(username)}`);
-      const data = await response.json();
+    let results = [];
 
-      if (response.status === 404 || data.error) {
-        setError(data.error || 'User not found.');
-        setUserData(null);
-      } else if (!response.ok) {
-        throw new Error(data.error || `HTTP Error ${response.status}`);
-      } else {
-        setUserData(data);
-      }
-    } catch (err) {
-      console.error(`Error fetching ${username}:`, err);
-      setError(`Failed to fetch data. Please check the console for details.`);
-      setUserData(null);
-    } finally {
-      setIsLoading(false);
+    if (usernamesToFetch.length === 1 && usernamesToFetch[0]) {
+      const result = await fetchSingleUserData(usernamesToFetch[0]);
+      results = [result];
+      setProcessingProgress(1);
+    } else {
+      results = await fetchBulkUserData(usernamesToFetch);
     }
-  }, [usernameInput]);
 
-  const UserProfileDisplay = ({ user }) => {
+    setSearchResults(results);
+    setIsLoading(false);
+  };
+
+  // Handle single search
+  const handleSingleSearch = async () => {
+    const trimmedUsername = usernameInput.trim();
+    if (!trimmedUsername) return;
+    setLastSearchedUsernames([trimmedUsername]);
+    setLastSearchedFile(null);
+    await processUsernames([trimmedUsername]);
+    setUsernameInput('');
+  };
+
+  // Handle bulk search (file upload)
+  const handleBulkSearch = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    setLastSearchedFile(file);
+    setLastSearchedUsernames([]);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        
+        const usernames = jsonData
+          .flat()
+          .map(val => String(val).trim())
+          .filter(val => val && val.toLowerCase() !== 'username');
+        
+        await processUsernames(usernames);
+      } catch (err) {
+        setError('Failed to parse file. Please ensure it\'s a valid CSV or Excel file.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    event.target.value = null;
+  };
+
+  // Handle refresh
+  const handleRefresh = async () => {
+    if (lastSearchedFile && lastSearchedUsernames.length === 0) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          const usernames = jsonData
+            .flat()
+            .map(val => String(val).trim())
+            .filter(val => val && val.toLowerCase() !== 'username');
+          await processUsernames(usernames);
+        } catch (err) {
+          setError('Failed to refresh data.');
+        }
+      };
+      reader.readAsArrayBuffer(lastSearchedFile);
+    } else if (lastSearchedUsernames.length > 0) {
+      await processUsernames(lastSearchedUsernames);
+    }
+  };
+
+  // Sortable header component
+  const SortableHeader = ({ columnKey, title, currentSortConfig, onRequestSort }) => (
+    <th scope="col" className="px-5 py-3 cursor-pointer hover:bg-slate-600/50 transition-colors select-none" onClick={() => onRequestSort(columnKey)}>
+      <div className="flex items-center justify-between">
+        <span>{title}</span>
+        <div className="flex flex-col ml-1">
+          <ChevronUp size={12} className={currentSortConfig.key === columnKey && currentSortConfig.direction === 'ascending' ? 'text-orange-400' : 'text-slate-600'} />
+          <ChevronDown size={12} className={currentSortConfig.key === columnKey && currentSortConfig.direction === 'descending' ? 'text-orange-400' : 'text-slate-600'} />
+        </div>
+      </div>
+    </th>
+  );
+
+  // Table columns configuration
+  const tableColumns = useMemo(() => [
+    { key: 'sno', label: 'S.No.', sortable: false },
+    { key: 'name', label: 'Name', sortable: true, getValue: user => getNestedValue(user, 'full_name', '').toLowerCase() },
+    { key: 'username', label: 'Username', sortable: true, getValue: user => user.username?.toLowerCase() || '' },
+    { key: 'rating', label: 'Rating', sortable: true, getValue: user => {
+      const rating = getNestedValue(user, 'rating', 0);
+      return rating === 'N/A' ? 0 : parseInt(String(rating).replace(/,/g, '')) || 0;
+    }},
+    { key: 'stars', label: 'Stars', sortable: true, getValue: user => {
+      const stars = getNestedValue(user, 'stars', 0);
+      return stars === 'N/A' ? 0 : parseInt(String(stars)) || 0;
+    }},
+    { key: 'problemsSolved', label: 'Problems Solved', sortable: true, getValue: user => {
+      const solved = getNestedValue(user, 'problems_solved', 0);
+      return solved === 'N/A' ? 0 : parseInt(String(solved).replace(/,/g, '')) || 0;
+    }},
+    { key: 'globalRank', label: 'Global Rank', sortable: true, getValue: user => {
+      const rank = getNestedValue(user, 'global_rank', 'N/A');
+      return rank === 'N/A' ? Infinity : parseInt(String(rank).replace(/,/g, '')) || Infinity;
+    }},
+    { key: 'contestsParticipated', label: 'Contests Participated', sortable: true, getValue: user => {
+      const contests = getNestedValue(user, 'contest_history', []);
+      return Array.isArray(contests) ? contests.length : 0;
+    }},
+    { key: 'status', label: 'Status', sortable: true, getValue: user => user.error && !user.rating ? 0 : 1 },
+  ], []);
+
+  // Request sort
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Process and filter results
+  const processedResults = useMemo(() => {
+    let filtered = searchResults.filter(user => {
+      const usernameMatch = user.username?.toLowerCase().includes(filterUsername.toLowerCase());
+      const nameMatch = getNestedValue(user, 'full_name', '').toLowerCase().includes(filterName.toLowerCase());
+      return usernameMatch && nameMatch;
+    });
+
+    if (sortConfig.key && sortConfig.key !== 'sno') {
+      const column = tableColumns.find(col => col.key === sortConfig.key);
+      if (column && column.getValue) {
+        filtered.sort((a, b) => {
+          const aVal = column.getValue(a);
+          const bVal = column.getValue(b);
+          if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+          if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+          return 0;
+        });
+      }
+    }
+
+    return filtered;
+  }, [searchResults, sortConfig, filterUsername, filterName, tableColumns]);
+
+  // Download table as Excel
+  const handleDownloadTable = () => {
+    const exportData = processedResults.map((user, index) => ({
+      'S.No.': index + 1,
+      'Name': getNestedValue(user, 'full_name', 'N/A'),
+      'Username': user.username,
+      'Rating': getNestedValue(user, 'rating', 0),
+      'Stars': getNestedValue(user, 'stars', 0),
+      'Problems Solved': getNestedValue(user, 'problems_solved', 0),
+      'Global Rank': getNestedValue(user, 'global_rank', 'N/A'),
+      'Contests Participated': Array.isArray(user.contest_history) ? user.contest_history.length : 0,
+      'Status': user.error && !user.rating ? 'Error' : 'Success'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'CodeChef Data');
+    XLSX.writeFile(wb, 'codechef_profiles.xlsx');
+  };
+
+  // Get star color
+  const getStarColor = (stars) => {
+    const starNum = parseInt(stars) || 0;
+    if (starNum >= 7) return 'text-red-400';
+    if (starNum >= 5) return 'text-orange-400';
+    if (starNum >= 4) return 'text-purple-400';
+    if (starNum >= 3) return 'text-blue-400';
+    if (starNum >= 2) return 'text-cyan-400';
+    if (starNum >= 1) return 'text-green-400';
+    return 'text-slate-400';
+  };
+
+  // Modal content component for detailed view
+  const ModalContent = ({ user }) => {
     if (!user) return null;
 
     const isErrorState = user.error && !user.rating;
     if (isErrorState) {
       return (
-        <div className="text-center py-12 mt-10 max-w-4xl mx-auto bg-slate-800 rounded-xl shadow-2xl p-6">
-          <X className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-red-400 mb-2">Error Loading Profile</h2>
-          <p className="text-slate-300">{user.error}</p>
+        <div className="text-center py-8">
+          <AlertTriangle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Error Loading Profile</h3>
+          <p className="text-slate-400">{user.error}</p>
         </div>
       );
     }
     
     return (
-      <div className="mt-10 max-w-4xl mx-auto bg-slate-800 rounded-xl shadow-2xl p-6 space-y-6">
+      <div className="space-y-6">
         {/* Header Section */}
-        <div className="text-center border-b border-slate-700 pb-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-orange-500 to-red-600 mx-auto mb-4 flex items-center justify-center">
-            <User className="w-10 h-10 text-white" />
+        <div className="flex items-center space-x-4 pb-4 border-b border-slate-700">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+            <User className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-3xl font-bold text-slate-100 mb-1">{user.username}</h2>
-          {user.full_name && user.full_name !== 'N/A' && (
-            <p className="text-lg text-slate-400">{user.full_name}</p>
-          )}
-          {user.error && (
-            <p className="text-sm text-yellow-400 mt-2">⚠️ Partial data: {user.error}</p>
-          )}
+          <div>
+            <h2 className="text-2xl font-bold text-white">{user.username}</h2>
+            {user.full_name && user.full_name !== 'N/A' && (
+              <p className="text-lg text-slate-400">{user.full_name}</p>
+            )}
+            {user.error && user.rating && (
+              <p className="text-sm text-yellow-400 mt-1">⚠️ Partial data: {user.error}</p>
+            )}
+          </div>
         </div>
 
         {/* Key Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard title="Rating" value={user.rating} icon={TrendingUp} color="text-orange-400" />
           <StatCard title="Stars" value={user.stars} icon={Star} color="text-yellow-400" />
           <StatCard title="Problems Solved" value={user.problems_solved} icon={Award} color="text-green-400" />
           <StatCard title="Global Rank" value={user.global_rank} icon={Trophy} color="text-purple-400" />
+          <StatCard title="Country Rank" value={user.country_rank} icon={Trophy} color="text-blue-400" />
+          <StatCard title="Contests" value={Array.isArray(user.contest_history) ? user.contest_history.length : 0} icon={Calendar} color="text-pink-400" />
         </div>
 
         {/* Rankings Section */}
@@ -176,6 +386,8 @@ function CodeChefProfileAnalyzer() {
     );
   };
 
+  };
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8 font-sans">
       <style>{`
@@ -192,24 +404,24 @@ function CodeChefProfileAnalyzer() {
 
       {/* Search Section */}
       <div className="max-w-xl mx-auto mb-8 p-6 bg-slate-800 rounded-xl shadow-2xl">
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-grow">
             <input
               type="text"
               value={usernameInput}
               onChange={(e) => setUsernameInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              onKeyPress={(e) => e.key === 'Enter' && handleSingleSearch()}
               placeholder="Enter CodeChef Username"
               className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
           </div>
           <button
-            onClick={handleSearch}
+            onClick={handleSingleSearch}
             disabled={isLoading || !usernameInput.trim()}
             className="bg-orange-600 hover:bg-orange-500 text-white font-semibold px-6 py-2.5 rounded-lg flex items-center justify-center transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 focus:ring-offset-slate-800"
           >
-            {isLoading ? (
+            {isLoading && totalToProcess === 1 ? (
               <Loader2 className="animate-spin mr-2" size={20} />
             ) : (
               <Search className="mr-2" size={20} />
@@ -218,19 +430,169 @@ function CodeChefProfileAnalyzer() {
           </button>
         </div>
 
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-center">
+          <label
+            htmlFor="bulk-upload"
+            className={`cursor-pointer bg-teal-600 hover:bg-teal-500 text-white font-semibold px-6 py-2.5 rounded-lg inline-flex items-center justify-center transition-colors w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-slate-800 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            <UploadCloud className="mr-2" size={20} /> Bulk Search (CSV/XLSX)
+          </label>
+          <input
+            id="bulk-upload"
+            type="file"
+            accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+            onChange={handleBulkSearch}
+            disabled={isLoading}
+            className="hidden"
+          />
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading || (lastSearchedUsernames.length === 0 && !lastSearchedFile)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-2.5 rounded-lg flex items-center justify-center transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800 w-full sm:w-auto"
+          >
+            {isLoading ? <Loader2 className="animate-spin mr-2" size={20} /> : <RotateCcw className="mr-2" size={20} />}
+            Refresh Data
+          </button>
+        </div>
+
         {error && !isLoading && <p className="text-red-400 mt-4 text-center text-sm">{error}</p>}
       </div>
 
-      {/* Loading Indicator */}
-      {isLoading && (
+      {/* Loading Progress */}
+      {isLoading && totalToProcess > 0 && (
         <div className="my-6 text-center">
           <Loader2 className="animate-spin inline-block w-8 h-8 text-orange-400 mb-2" />
-          <p className="text-lg">Fetching user data...</p>
+          <p className="text-lg">
+            {totalToProcess > 1 ? `Processing ${totalToProcess} users... (This may take a moment)` : `Processing ${processingProgress} of ${totalToProcess} users...`}
+          </p>
+          <div className="w-full max-w-md mx-auto bg-slate-700 rounded-full h-2.5 mt-2 overflow-hidden">
+            <div
+              className="bg-orange-500 h-2.5 rounded-full transition-all duration-300 ease-linear"
+              style={{ width: `${totalToProcess > 0 ? (processingProgress / totalToProcess) * 100 : 0}%` }}
+            ></div>
+          </div>
         </div>
       )}
 
-      {/* Results Display */}
-      {!isLoading && userData && <UserProfileDisplay user={userData} />}
+      {/* Results Table */}
+      {searchResults.length > 0 && !isLoading && (
+        <div className="mt-10 max-w-7xl mx-auto bg-slate-800 rounded-xl shadow-2xl overflow-hidden">
+          <div className="p-5 border-b border-slate-700 flex flex-wrap gap-4 items-center justify-between">
+            <h2 className="text-2xl font-semibold text-slate-100">Search Results ({processedResults.length})</h2>
+            <button
+              onClick={handleDownloadTable}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors text-sm"
+            >
+              <Download size={18} className="mr-2" /> Download Table
+            </button>
+          </div>
+
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-700">
+            <input
+              type="text"
+              placeholder="Filter by Username..."
+              value={filterUsername}
+              onChange={e => setFilterUsername(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+            />
+            <input
+              type="text"
+              placeholder="Filter by Name..."
+              value={filterName}
+              onChange={e => setFilterName(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+            />
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] text-sm text-left text-slate-300">
+              <thead className="text-xs text-orange-300 uppercase bg-slate-700/50">
+                <tr>
+                  {tableColumns.map(col => (
+                    col.sortable ?
+                      <SortableHeader key={col.key} columnKey={col.key} title={col.label} currentSortConfig={sortConfig} onRequestSort={requestSort} />
+                      : <th key={col.key} scope="col" className="px-5 py-3">{col.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {processedResults.map((user, index) => (
+                  <tr
+                    key={user.username}
+                    className="bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedUser(user)}
+                  >
+                    <td className="px-5 py-4 font-medium">{index + 1}</td>
+                    <td className="px-5 py-4 text-slate-300">
+                      {getNestedValue(user, 'full_name', 'N/A')}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex items-center">
+                        <UserCircle className="w-5 h-5 mr-2 text-orange-400" />
+                        <span className="font-medium text-orange-300">{user.username}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-orange-400">
+                      {getNestedValue(user, 'rating', 0)}
+                    </td>
+                    <td className={`px-5 py-4 font-semibold ${getStarColor(user.stars)}`}>
+                      <div className="flex items-center">
+                        <Star className="w-4 h-4 mr-1" fill="currentColor" />
+                        {getNestedValue(user, 'stars', 0)}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-green-400">
+                      {getNestedValue(user, 'problems_solved', 0)}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-purple-400">
+                      {getNestedValue(user, 'global_rank', 'N/A') === 'N/A' ? 'N/A' : `#${getNestedValue(user, 'global_rank', 'N/A')}`}
+                    </td>
+                    <td className="px-5 py-4 font-semibold text-blue-400">
+                      {Array.isArray(user.contest_history) ? user.contest_history.length : 0}
+                    </td>
+                    <td className="px-5 py-4">
+                      {user.error && !user.rating ? (
+                        <span className="flex items-center text-red-400">
+                          <AlertTriangle className="w-4 h-4 mr-1" /> Error
+                        </span>
+                      ) : (
+                        <span className="flex items-center text-green-400">
+                          <CheckCircle className="w-4 h-4 mr-1" /> Success
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {processedResults.length === 0 && (
+              <p className="p-5 text-center text-slate-400">No users match the current filters or no search performed.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal for detailed view */}
+      {selectedUser && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+          onClick={() => setSelectedUser(null)}
+        >
+          <div
+            className="bg-slate-850 text-slate-200 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-slate-700 pretty-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedUser(null)}
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-100 transition-colors z-[110] p-1 rounded-full hover:bg-slate-700"
+              aria-label="Close modal"
+            >
+              <X size={24} />
+            </button>
+            <ModalContent user={selectedUser} />
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer id="contact-section" className="mt-12 border-t border-slate-700 pt-8">

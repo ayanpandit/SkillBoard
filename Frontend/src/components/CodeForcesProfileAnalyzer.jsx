@@ -173,12 +173,16 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   // Table columns configuration
   const tableColumns = useMemo(() => [
     { key: 'sno', label: 'S.No.', sortable: false },
+    { key: 'name', label: 'Name', sortable: true, getValue: user => `${getNestedValue(user, 'firstName', '')} ${getNestedValue(user, 'lastName', '')}`.trim().toLowerCase() || 'z' },
     { key: 'username', label: 'Username', sortable: true, getValue: user => user.username?.toLowerCase() || '' },
-    { key: 'rank', label: 'Rank', sortable: true, getValue: user => getNestedValue(user, 'rank', 'Unranked') },
     { key: 'rating', label: 'Rating', sortable: true, getValue: user => getNestedValue(user, 'rating', 0) },
-    { key: 'maxRating', label: 'Max Rating', sortable: true, getValue: user => getNestedValue(user, 'maxRating', 0) },
+    { key: 'stars', label: 'Stars', sortable: true, getValue: user => getNestedValue(user, 'stars', 0) },
     { key: 'problemsSolved', label: 'Problems Solved', sortable: true, getValue: user => getNestedValue(user, 'problemsSolved', 0) },
-    { key: 'contestsParticipated', label: 'Contests', sortable: true, getValue: user => getNestedValue(user, 'contestsParticipated', 0) },
+    { key: 'globalRank', label: 'Global Rank', sortable: true, getValue: user => {
+      const rank = getNestedValue(user, 'globalRank', 'N/A');
+      return rank === 'N/A' ? Infinity : parseInt(String(rank).replace(/,/g, ''));
+    }},
+    { key: 'contestsParticipated', label: 'Contests Participated', sortable: true, getValue: user => getNestedValue(user, 'contestsParticipated', 0) },
     { key: 'status', label: 'Status', sortable: true, getValue: user => user.error ? 0 : 1 },
   ], []);
 
