@@ -178,7 +178,7 @@ function CodeChefProfileAnalyzer() {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8 font-sans">
-      <style jsx global>{`
+      <style>{`
         .pretty-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .pretty-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .pretty-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
