@@ -3,49 +3,128 @@ from bs4 import BeautifulSoup
 import requests
 import re
 import json
+import time
+import random
 from datetime import datetime
 from flask_cors import CORS
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 app = Flask(__name__)
-CORS(app)  # Enable cross-origin requests from your frontend
+CORS(app)
 
 class CodeChefScraper:
-    """Single-request CodeChef profile scraper returning a rich dataset."""
+    """Robust CodeChef profile scraper with rate limiting and retry logic."""
 
     def __init__(self):
         self.base_url = "https://www.codechef.com"
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        self.session = self._create_robust_session()
+        self.last_request_time = 0
+        self.min_delay = 2.0  # Minimum 2 seconds between requests
+        self.max_delay = 4.0  # Maximum 4 seconds between requests
+        
+    def _create_robust_session(self):
+        """Create a session with retry logic and connection pooling."""
+        session = requests.Session()
+        
+        # Retry strategy for temporary failures
+        retry_strategy = Retry(
+            total=3,  # Total retries
+            backoff_factor=1,  # Wait 1, 2, 4 seconds between retries
+            status_forcelist=[429, 500, 502, 503, 504],  # Retry on these status codes
+            allowed_methods=["GET"]
+        )
+        
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=10,
+            pool_block=False
+        )
+        
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        # Rotate user agents to appear more natural
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+        ]
+        
+        session.headers.update({
+            'User-Agent': random.choice(user_agents),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Cache-Control': 'max-age=0',
         })
+        
+        return session
 
-    # Backward-compatible name used by the API
+    def _rate_limit(self):
+        """Implement rate limiting with random jitter to avoid detection."""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        
+        # Add random delay between min_delay and max_delay
+        delay = random.uniform(self.min_delay, self.max_delay)
+        
+        if time_since_last < delay:
+            sleep_time = delay - time_since_last
+            time.sleep(sleep_time)
+        
+        self.last_request_time = time.time()
+
     def get_user_data(self, username):
+        """Main entry point with retry logic."""
         return self.scrape_user_data(username)
 
-    def scrape_user_data(self, username):
-        """Fetch all CodeChef data in ONE page request to avoid rate limits."""
+    def scrape_user_data(self, username, retry_count=0, max_retries=3):
+        """Fetch CodeChef data with exponential backoff on failures."""
         try:
+            # Apply rate limiting
+            self._rate_limit()
+            
             url = f"{self.base_url}/users/{username}"
-            response = self.session.get(url, timeout=20)
+            
+            # Make request with timeout
+            response = self.session.get(url, timeout=30)
+            
+            # Handle different status codes
             if response.status_code == 404:
-                return {"error": "User not found"}
+                return {"error": "User not found", "username": username}
+            
+            if response.status_code == 429:  # Rate limited
+                if retry_count < max_retries:
+                    wait_time = (2 ** retry_count) * random.uniform(3, 6)  # Exponential backoff
+                    print(f"Rate limited for {username}. Waiting {wait_time:.1f}s before retry {retry_count + 1}/{max_retries}")
+                    time.sleep(wait_time)
+                    return self.scrape_user_data(username, retry_count + 1, max_retries)
+                return {"error": "Rate limited - try again later", "username": username}
+            
+            if response.status_code == 403:  # Forbidden
+                return {"error": "Access forbidden - possible IP block", "username": username}
+            
             if response.status_code != 200:
-                return {"error": f"HTTP Error {response.status_code}"}
+                if retry_count < max_retries:
+                    wait_time = (2 ** retry_count) * random.uniform(1, 3)
+                    print(f"HTTP {response.status_code} for {username}. Retrying in {wait_time:.1f}s...")
+                    time.sleep(wait_time)
+                    return self.scrape_user_data(username, retry_count + 1, max_retries)
+                return {"error": f"HTTP Error {response.status_code}", "username": username}
 
             html = response.text
             soup = BeautifulSoup(html, 'html.parser')
 
-            # Main stats
+            # Extract data
             rating, global_rank, country_rank = self._extract_main_stats(soup, html)
-            # Full name
             full_name = self._get_full_name(soup, username)
-            # Stars & problems solved
             stars = self._get_stars(soup)
             problems_solved = self._get_problems_solved(html, soup)
-            # Contest history
             contests = self._extract_contest_details(soup)
 
             return {
@@ -58,11 +137,30 @@ class CodeChefScraper:
                 "problems_solved": problems_solved,
                 "contest_history": contests,
                 "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "success": True
             }
+            
+        except requests.exceptions.Timeout:
+            if retry_count < max_retries:
+                wait_time = (2 ** retry_count) * random.uniform(1, 2)
+                print(f"Timeout for {username}. Retrying in {wait_time:.1f}s...")
+                time.sleep(wait_time)
+                return self.scrape_user_data(username, retry_count + 1, max_retries)
+            return {"error": "Request timeout", "username": username}
+            
+        except requests.exceptions.ConnectionError:
+            if retry_count < max_retries:
+                wait_time = (2 ** retry_count) * random.uniform(2, 4)
+                print(f"Connection error for {username}. Retrying in {wait_time:.1f}s...")
+                time.sleep(wait_time)
+                return self.scrape_user_data(username, retry_count + 1, max_retries)
+            return {"error": "Connection error", "username": username}
+            
         except requests.exceptions.RequestException as e:
-            return {"error": f"Network error: {str(e)}"}
+            return {"error": f"Network error: {str(e)}", "username": username}
+            
         except Exception as e:
-            return {"error": f"Unexpected error: {str(e)}"}
+            return {"error": f"Unexpected error: {str(e)}", "username": username}
 
     # ---------------------------
     #  Main Stats Extraction
@@ -73,7 +171,6 @@ class CodeChefScraper:
         global_rank = self._find_rank_by_label(soup, "Global Rank")
         country_rank = self._get_country_rank(soup)
 
-        # Normalize
         rating = rating if rating else "N/A"
         global_rank = global_rank if global_rank else "N/A"
         country_rank = country_rank if country_rank else "N/A"
@@ -131,10 +228,6 @@ class CodeChefScraper:
         text = soup.get_text(" ", strip=True)
         m = re.search(rf'{label_text}[:\s#-]{{0,6}}([0-9,]{{1,7}})', text, re.I)
         return self._norm_num(m.group(1)) if m else None
-
-    # ---------------------------
-    #  Stars, Problems, Name
-    # ---------------------------
 
     def _get_full_name(self, soup, username):
         try:
@@ -237,10 +330,6 @@ class CodeChefScraper:
         except Exception:
             return 0
 
-    # ---------------------------
-    #  Contest History Extraction
-    # ---------------------------
-
     def _extract_contest_details(self, soup):
         contests = []
         try:
@@ -284,6 +373,8 @@ class CodeChefScraper:
         except Exception:
             return "N/A"
 
+
+# Single username endpoint
 @app.route('/api/codechef', methods=['GET'])
 def get_codechef_data():
     username = request.args.get('username')
@@ -294,5 +385,45 @@ def get_codechef_data():
     data = scraper.get_user_data(username)
     return jsonify(data)
 
+
+# Bulk processing endpoint
+@app.route('/api/codechef/bulk', methods=['POST'])
+def get_bulk_codechef_data():
+    """Process multiple usernames with progress tracking."""
+    data = request.get_json()
+    
+    if not data or 'usernames' not in data:
+        return jsonify({"error": "usernames array is required"}), 400
+    
+    usernames = data['usernames']
+    if not isinstance(usernames, list):
+        return jsonify({"error": "usernames must be an array"}), 400
+    
+    if len(usernames) > 1000:
+        return jsonify({"error": "Maximum 1000 usernames per request"}), 400
+    
+    scraper = CodeChefScraper()
+    results = []
+    
+    for i, username in enumerate(usernames):
+        print(f"Processing {i+1}/{len(usernames)}: {username}")
+        result = scraper.get_user_data(username)
+        results.append(result)
+    
+    # Summary statistics
+    successful = sum(1 for r in results if r.get('success', False))
+    failed = len(results) - successful
+    
+    return jsonify({
+        "results": results,
+        "summary": {
+            "total": len(results),
+            "successful": successful,
+            "failed": failed,
+            "success_rate": f"{(successful/len(results)*100):.1f}%" if results else "0%"
+        }
+    })
+
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, threaded=True)
