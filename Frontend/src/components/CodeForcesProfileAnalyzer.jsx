@@ -10,12 +10,12 @@ import {
 
 // Placeholder for the Codeforces API URL
 const API_URL = import.meta.env.PROD 
-  ? 'https://codeforcesbackend.onrender.com/api/codeforces'
-  : 'http://localhost:3000/api/codeforces';
+  ? import.meta.env.VITE_CODEFORCES_API_URL_PROD
+  : import.meta.env.VITE_CODEFORCES_API_URL_DEV;
 
 const API_BULK_URL = import.meta.env.PROD
-  ? 'https://codeforcesbackend.onrender.com/api/codeforces/bulk'
-  : 'http://localhost:3000/api/codeforces/bulk';
+  ? import.meta.env.VITE_CODEFORCES_API_BULK_URL_PROD
+  : import.meta.env.VITE_CODEFORCES_API_BULK_URL_DEV;
 
 const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   // State will be implemented later
