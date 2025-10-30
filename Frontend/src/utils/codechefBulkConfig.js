@@ -35,9 +35,8 @@ export const CONFIG = {
    * - VITE_CODECHEF_API_URL_4_DEV/PROD
    * - VITE_CODECHEF_API_URL_5_DEV/PROD
    * - VITE_CODECHEF_API_URL_6_DEV/PROD
-   * - VITE_CODECHEF_API_URL_7_DEV/PROD
    */
-  NUM_WORKERS: 7,
+  NUM_WORKERS: 6,
   
   /**
    * ⏱️ DELAY BETWEEN REQUESTS (milliseconds)
@@ -53,7 +52,7 @@ export const CONFIG = {
    * 
    * ⚠️ If you see frequent errors, INCREASE this value
    */
-  DELAY_BETWEEN_REQUESTS: 1500,
+  DELAY_BETWEEN_REQUESTS: 2000,
   
   /**
    * 🔄 MAXIMUM RETRY ATTEMPTS
