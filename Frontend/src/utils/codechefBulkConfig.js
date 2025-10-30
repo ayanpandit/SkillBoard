@@ -28,13 +28,16 @@ export const CONFIG = {
    * - 8-10 workers: Aggressive (maximum speed, needs monitoring)
    * 
    * REMEMBER: Add corresponding API URLs to .env file!
-   * Example: If NUM_WORKERS = 4, you need:
+   * Example: If NUM_WORKERS = 7, you need:
    * - VITE_CODECHEF_API_URL_1_DEV/PROD
    * - VITE_CODECHEF_API_URL_2_DEV/PROD
    * - VITE_CODECHEF_API_URL_3_DEV/PROD
    * - VITE_CODECHEF_API_URL_4_DEV/PROD
+   * - VITE_CODECHEF_API_URL_5_DEV/PROD
+   * - VITE_CODECHEF_API_URL_6_DEV/PROD
+   * - VITE_CODECHEF_API_URL_7_DEV/PROD
    */
-  NUM_WORKERS: 4,
+  NUM_WORKERS: 7,
   
   /**
    * ⏱️ DELAY BETWEEN REQUESTS (milliseconds)
