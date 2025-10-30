@@ -6,10 +6,11 @@ import {
   TrendingUp, Calendar, Download, RotateCcw, UploadCloud, CheckCircle, 
   AlertTriangle, UserCircle
 } from 'lucide-react';
+import { codechefBulkSearch } from '../utils/codechefBulkManager';
 
 const IS_PRODUCTION = import.meta.env.PROD;
 
-// CodeChef backend API endpoint loaded from .env
+// CodeChef backend API endpoint loaded from .env (for single user search)
 const API_URL = IS_PRODUCTION
   ? import.meta.env.VITE_CODECHEF_API_URL_PROD
   : import.meta.env.VITE_CODECHEF_API_URL_DEV;
@@ -81,15 +82,27 @@ function CodeChefProfileAnalyzer() {
     }
   }, []);
 
-  // Fetch bulk user data
+  // Fetch bulk user data using the bulk manager
   const fetchBulkUserData = async (usernames) => {
-    const results = [];
-    for (let i = 0; i < usernames.length; i++) {
-      const result = await fetchSingleUserData(usernames[i]);
-      results.push(result);
-      setProcessingProgress(i + 1);
+    try {
+      // Use the bulk search manager with progress callbacks
+      const results = await codechefBulkSearch(
+        usernames,
+        // Individual worker progress callback
+        (progress) => {
+          console.log(`Worker ${progress.workerId}: ${progress.completed}/${progress.total} - ${progress.currentUsername}`);
+        },
+        // Overall progress callback
+        (overall) => {
+          setProcessingProgress(overall.completedTotal);
+          console.log(`Overall Progress: ${overall.percentage}% (${overall.completedTotal}/${overall.totalCount})`);
+        }
+      );
+      return results;
+    } catch (err) {
+      console.error('Error in bulk search:', err);
+      throw err;
     }
-    return results;
   };
 
   // Process usernames (single or bulk)
@@ -384,8 +397,6 @@ function CodeChefProfileAnalyzer() {
         </div>
       </div>
     );
-  };
-
   };
 
   return (
