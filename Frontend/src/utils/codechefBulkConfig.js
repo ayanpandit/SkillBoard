@@ -36,7 +36,7 @@ export const CONFIG = {
    * - VITE_CODECHEF_API_URL_5_DEV/PROD
    * - VITE_CODECHEF_API_URL_6_DEV/PROD
    */
-  NUM_WORKERS: 3,  // Reduced for safety to avoid CodeChef blocking
+  NUM_WORKERS: 2,  // Ultra-conservative: Only 2 workers for maximum safety (300+ users)
   
   /**
    * ⏱️ DELAY BETWEEN REQUESTS (milliseconds)
@@ -52,7 +52,7 @@ export const CONFIG = {
    * 
    * ⚠️ If you see frequent errors, INCREASE this value
    */
-  DELAY_BETWEEN_REQUESTS: 3500,  // Increased to 3.5s for safety - prevents CodeChef blocking
+  DELAY_BETWEEN_REQUESTS: 4500,  // Ultra-safe: 4.5s base delay for ZERO errors (300+ users safe)
   
   /**
    * 🎲 RANDOM DELAY JITTER (milliseconds)
@@ -62,7 +62,7 @@ export const CONFIG = {
    * 
    * This makes requests less predictable and more natural.
    */
-  RANDOM_JITTER: 1000,  // Add 0-1 second random variation
+  RANDOM_JITTER: 1500,  // Add 0-1.5 second random variation (more human-like)
   
   /**
    * 🔄 MAXIMUM RETRY ATTEMPTS
@@ -74,7 +74,7 @@ export const CONFIG = {
    * - 2-3: Balanced (default)
    * - 4-5: Maximum resilience, slower on failures
    */
-  MAX_RETRIES: 4,  // Increased retries for better success rate
+  MAX_RETRIES: 5,  // Maximum retries for ZERO errors target
   
   /**
    * ⏸️ DELAY BEFORE RETRY (milliseconds)
@@ -87,7 +87,7 @@ export const CONFIG = {
    * - 3000ms (3s): Balanced
    * - 5000ms (5s): Conservative, gives server time to recover
    */
-  RETRY_DELAY: 5000,  // Increased to 5s - wait longer before retry to avoid blocking
+  RETRY_DELAY: 6000,  // Ultra-safe: 6s base for exponential backoff (6s, 12s, 18s, 24s, 30s)
   
   /**
    * ⏳ REQUEST TIMEOUT (milliseconds)

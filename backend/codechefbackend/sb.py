@@ -16,13 +16,13 @@ CORS(app)
 class CodeChefScraper:
     """Robust CodeChef profile scraper with rate limiting and retry logic."""
 
-    def __init__(self):
+    def __init__(self, skip_rate_limit=False):
         self.base_url = "https://www.codechef.com"
         self.session = self._create_robust_session()
         self.last_request_time = 0
         self.min_delay = 2.0  # Minimum 2 seconds between requests
         self.max_delay = 4.0  # Maximum 4 seconds between requests
-        self.skip_rate_limit = False  # Flag to skip rate limiting (for single API calls)
+        self.skip_rate_limit = skip_rate_limit  # Flag to skip rate limiting (for single API calls)
         
     def _create_robust_session(self):
         """Create a session with retry logic and connection pooling."""
@@ -386,15 +386,13 @@ def get_codechef_data():
     if not username:
         return jsonify({"error": "Username is required"}), 400
 
-    # Create scraper but skip internal rate limiting for single requests
-    # Frontend bulk manager already handles rate limiting
-    scraper = CodeChefScraper()
-    scraper.skip_rate_limit = True  # Flag to skip rate limiting
+    # Create scraper with skip_rate_limit=True (frontend handles rate limiting)
+    scraper = CodeChefScraper(skip_rate_limit=True)
     data = scraper.get_user_data(username)
     return jsonify(data)
 
 
-# Bulk processing endpoint
+# Bulk processing endpoint (KEEPS rate limiting for safety)
 @app.route('/api/codechef/bulk', methods=['POST'])
 def get_bulk_codechef_data():
     """Process multiple usernames with progress tracking."""
@@ -410,7 +408,8 @@ def get_bulk_codechef_data():
     if len(usernames) > 1000:
         return jsonify({"error": "Maximum 1000 usernames per request"}), 400
     
-    scraper = CodeChefScraper()
+    # Create scraper WITHOUT skipping rate limit (bulk needs protection)
+    scraper = CodeChefScraper(skip_rate_limit=False)
     results = []
     
     for i, username in enumerate(usernames):

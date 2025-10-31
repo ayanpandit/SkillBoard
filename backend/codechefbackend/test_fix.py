@@ -8,7 +8,7 @@ import time
 import json
 
 # Test configuration
-BASE_URL = "http://localhost:5000"  # Change to your backend URL
+BASE_URL = "https://codechef-d657.onrender.com"  # Change to your backend URL
 TEST_USERNAMES = [
     "aayanpandey",
     "hawkadarsh3908", 

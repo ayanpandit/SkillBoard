@@ -228,16 +228,19 @@ export const codechefBulkSearch = async (usernames, onProgress, onOverallProgres
   const startTime = Date.now();
   
   console.log('═══════════════════════════════════════════════════════');
-  console.log('🎯 CodeChef Bulk Search Started (SAFE MODE)');
+  console.log('🎯 CodeChef Bulk Search Started (ULTRA-SAFE MODE)');
   console.log('═══════════════════════════════════════════════════════');
   console.log(`📊 Total usernames: ${usernames.length}`);
-  console.log(`👷 Number of workers: ${NUM_WORKERS} (conservative for safety)`);
-  console.log(`⏱️ Base delay: ${DELAY_BETWEEN_REQUESTS}ms`);
-  console.log(`🎲 Random jitter: ±${RANDOM_JITTER}ms (appears more human-like)`);
+  console.log(`👷 Number of workers: ${NUM_WORKERS} (ultra-conservative, 300+ users safe)`);
+  console.log(`⏱️ Base delay: ${DELAY_BETWEEN_REQUESTS}ms (4.5s)`);
+  console.log(`🎲 Random jitter: ±${RANDOM_JITTER}ms (0-1.5s variation)`);
+  console.log(`⏳ Actual delay range: ${DELAY_BETWEEN_REQUESTS}ms - ${DELAY_BETWEEN_REQUESTS + RANDOM_JITTER}ms (4.5-6s)`);
   console.log(`🔄 Max retries: ${MAX_RETRIES} with exponential backoff`);
-  console.log(`⏳ Request timeout: ${REQUEST_TIMEOUT}ms`);
+  console.log(`📡 Retry delays: 6s, 12s, 18s, 24s, 30s (total 90s if all fail)`);
+  console.log(`⏳ Request timeout: ${REQUEST_TIMEOUT}ms (60s)`);
   console.log(`🌍 Environment: ${IS_PRODUCTION ? 'Production' : 'Development'}`);
-  console.log(`🛡️ Safety: HIGH (slower but avoids CodeChef blocking)`);
+  console.log(`🛡️ Safety Level: MAXIMUM (ZERO errors target, 300+ users safe)`);
+  console.log(`⚡ Staggered start: 2s delay between workers (prevents simultaneous hits)`);
   console.log('═══════════════════════════════════════════════════════');
   
   // Get API URLs for all workers
@@ -276,10 +279,18 @@ export const codechefBulkSearch = async (usernames, onProgress, onOverallProgres
     }
   };
   
-  // Start all workers in parallel
-  const workerPromises = usernameBatches.map((batch, index) => 
-    worker(batch, apiUrls[index], index + 1, progressWrapper)
-  );
+  // Start all workers with staggered timing (prevent simultaneous hits to CodeChef)
+  const workerPromises = usernameBatches.map(async (batch, index) => {
+    // Stagger worker start times: Worker 1 starts immediately, Worker 2 after 2s, etc.
+    const startDelay = index * 2000; // 2 seconds stagger between workers
+    if (startDelay > 0) {
+      if (VERBOSE_LOGGING) {
+        console.log(`⏳ Worker ${index + 1}: Waiting ${startDelay}ms before starting (staggered start)...`);
+      }
+      await delay(startDelay);
+    }
+    return worker(batch, apiUrls[index], index + 1, progressWrapper);
+  });
   
   // Wait for all workers to complete
   const workerResults = await Promise.all(workerPromises);
