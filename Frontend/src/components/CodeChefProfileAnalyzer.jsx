@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import {
   Search, Loader2, X, ChevronDown, ChevronUp, User, Award, Trophy, Star,
   TrendingUp, Calendar, Download, RotateCcw, UploadCloud, CheckCircle, 
-  AlertTriangle, UserCircle
+  AlertTriangle, UserCircle, Clock, AlertCircle
 } from 'lucide-react';
 import { codechefBulkSearch } from '../utils/codechefBulkManager';
 
@@ -60,6 +60,58 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
   const [sortConfig, setSortConfig] = useState({ key: 'sno', direction: 'ascending' });
   const [filterUsername, setFilterUsername] = useState('');
   const [filterName, setFilterName] = useState('');
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(0);
+  const [startTime, setStartTime] = useState(null);
+
+  // Cheat detection function - detects suspicious rating drops
+  const detectCheating = useCallback((contestHistory) => {
+    if (!Array.isArray(contestHistory) || contestHistory.length < 2) {
+      return { suspiciousContests: [], cheatCount: 0 };
+    }
+
+    const suspiciousContests = [];
+    const RATING_DROP_THRESHOLD = 200; // Suspicious if rating drops by 200+ points
+
+    for (let i = 1; i < contestHistory.length; i++) {
+      const prevRating = parseInt(contestHistory[i - 1].rating) || 0;
+      const currentRating = parseInt(contestHistory[i].rating) || 0;
+      const ratingDrop = prevRating - currentRating;
+
+      // If there's a significant rating drop, mark as suspicious
+      if (ratingDrop >= RATING_DROP_THRESHOLD) {
+        suspiciousContests.push({
+          ...contestHistory[i],
+          index: i,
+          ratingDrop: ratingDrop,
+          previousRating: prevRating
+        });
+      }
+    }
+
+    return {
+      suspiciousContests,
+      cheatCount: suspiciousContests.length
+    };
+  }, []);
+
+  // Process results with cheat detection
+  const processResultsWithCheatDetection = useCallback((results) => {
+    return results.map(user => {
+      if (user.contest_history && Array.isArray(user.contest_history)) {
+        const cheatAnalysis = detectCheating(user.contest_history);
+        return {
+          ...user,
+          cheatCount: cheatAnalysis.cheatCount,
+          suspiciousContests: cheatAnalysis.suspiciousContests
+        };
+      }
+      return {
+        ...user,
+        cheatCount: 0,
+        suspiciousContests: []
+      };
+    });
+  }, [detectCheating]);
 
   // Auto-load file from Profile page
   useEffect(() => {
@@ -134,22 +186,43 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
   }, []);
 
   // Fetch bulk user data using the bulk manager
-  const fetchBulkUserData = async (usernames) => {
+  const fetchBulkUserDataProgressive = async (usernames) => {
     try {
+      const results = [];
+      setStartTime(Date.now());
+      
       // Use the bulk search manager with progress callbacks
-      const results = await codechefBulkSearch(
+      const finalResults = await codechefBulkSearch(
         usernames,
         // Individual worker progress callback
         (progress) => {
           console.log(`Worker ${progress.workerId}: ${progress.completed}/${progress.total} - ${progress.currentUsername}`);
         },
-        // Overall progress callback
+        // Overall progress callback with real-time updates
         (overall) => {
           setProcessingProgress(overall.completedTotal);
+          
+          // Calculate estimated time remaining
+          if (overall.completedTotal > 0) {
+            const elapsed = Date.now() - startTime;
+            const avgTimePerUser = elapsed / overall.completedTotal;
+            const remaining = (overall.totalCount - overall.completedTotal) * avgTimePerUser;
+            setEstimatedTimeRemaining(Math.ceil(remaining / 1000)); // Convert to seconds
+          }
+          
           console.log(`Overall Progress: ${overall.percentage}% (${overall.completedTotal}/${overall.totalCount})`);
+          
+          // Get the latest completed result and add it to display
+          if (overall.lastCompletedResult) {
+            results.push(overall.lastCompletedResult);
+            // Process and update results progressively
+            const processedResults = processResultsWithCheatDetection(results);
+            setSearchResults([...processedResults]);
+          }
         }
       );
-      return results;
+      
+      return finalResults;
     } catch (err) {
       console.error('Error in bulk search:', err);
       throw err;
@@ -168,6 +241,8 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
     setSearchResults([]);
     setTotalToProcess(usernamesToFetch.length);
     setProcessingProgress(0);
+    setEstimatedTimeRemaining(0);
+    setStartTime(Date.now());
 
     let results = [];
 
@@ -175,12 +250,18 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
       const result = await fetchSingleUserData(usernamesToFetch[0]);
       results = [result];
       setProcessingProgress(1);
+      // Process with cheat detection
+      const processedResults = processResultsWithCheatDetection(results);
+      setSearchResults(processedResults);
     } else {
-      results = await fetchBulkUserData(usernamesToFetch);
+      results = await fetchBulkUserDataProgressive(usernamesToFetch);
+      // Final processing with cheat detection
+      const processedResults = processResultsWithCheatDetection(results);
+      setSearchResults(processedResults);
     }
 
-    setSearchResults(results);
     setIsLoading(false);
+    setEstimatedTimeRemaining(0);
   };
 
   // Handle single search
@@ -285,6 +366,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
       const contests = getNestedValue(user, 'contest_history', []);
       return Array.isArray(contests) ? contests.length : 0;
     }},
+    { key: 'cheatCount', label: 'Cheat Count', sortable: true, getValue: user => user.cheatCount || 0 },
     { key: 'status', label: 'Status', sortable: true, getValue: user => user.error && !user.rating ? 0 : 1 },
   ], []);
 
@@ -332,6 +414,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
       'Problems Solved': getNestedValue(user, 'problems_solved', 0),
       'Global Rank': getNestedValue(user, 'global_rank', 'N/A'),
       'Contests Participated': Array.isArray(user.contest_history) ? user.contest_history.length : 0,
+      'Cheat Count': user.cheatCount || 0,
       'Status': user.error && !user.rating ? 'Error' : 'Success'
     }));
 
@@ -417,25 +500,71 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
         {/* Contest History */}
         {user.contest_history && user.contest_history.length > 0 && (
           <Section title="Contest History" icon={Calendar} defaultOpen={false}>
+            {user.cheatCount > 0 && (
+              <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-400 mr-2 flex-shrink-0" />
+                <p className="text-sm text-red-300">
+                  <strong>{user.cheatCount}</strong> suspicious contest(s) detected with significant rating drops (200+ points).
+                  These contests are highlighted in red below.
+                </p>
+              </div>
+            )}
             <div className="overflow-x-auto pretty-scrollbar">
               <table className="w-full text-sm">
                 <thead className="bg-slate-700/50">
                   <tr>
                     <th className="px-4 py-2 text-left text-slate-300">Contest Name</th>
                     <th className="px-4 py-2 text-left text-slate-300">Rating</th>
+                    <th className="px-4 py-2 text-left text-slate-300">Rating Change</th>
                     <th className="px-4 py-2 text-left text-slate-300">Rank</th>
                     <th className="px-4 py-2 text-left text-slate-300">Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {user.contest_history.map((contest, idx) => (
-                    <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                      <td className="px-4 py-2 text-slate-300">{contest.name}</td>
-                      <td className="px-4 py-2 text-orange-400 font-semibold">{contest.rating}</td>
-                      <td className="px-4 py-2 text-slate-300">{contest.rank}</td>
-                      <td className="px-4 py-2 text-slate-400">{contest.date}</td>
-                    </tr>
-                  ))}
+                  {user.contest_history.map((contest, idx) => {
+                    const isSuspicious = user.suspiciousContests?.some(s => s.index === idx);
+                    const suspiciousData = user.suspiciousContests?.find(s => s.index === idx);
+                    const prevRating = idx > 0 ? user.contest_history[idx - 1].rating : contest.rating;
+                    const ratingChange = parseInt(contest.rating) - parseInt(prevRating);
+                    const ratingChangeText = idx === 0 ? '-' : (ratingChange > 0 ? `+${ratingChange}` : ratingChange);
+                    
+                    return (
+                      <tr 
+                        key={idx} 
+                        className={`border-b border-slate-700/50 hover:bg-slate-700/30 ${isSuspicious ? 'bg-red-500/10' : ''}`}
+                      >
+                        <td className={`px-4 py-2 ${isSuspicious ? 'text-red-300 font-semibold' : 'text-slate-300'}`}>
+                          {contest.name}
+                          {isSuspicious && (
+                            <span className="ml-2 text-xs bg-red-500/30 px-2 py-0.5 rounded">
+                              ⚠️ Suspicious
+                            </span>
+                          )}
+                        </td>
+                        <td className={`px-4 py-2 font-semibold ${isSuspicious ? 'text-red-400' : 'text-orange-400'}`}>
+                          {contest.rating}
+                        </td>
+                        <td className={`px-4 py-2 font-semibold ${
+                          ratingChange > 0 ? 'text-green-400' : 
+                          ratingChange < -100 ? 'text-red-400' : 
+                          'text-slate-400'
+                        }`}>
+                          {ratingChangeText}
+                          {isSuspicious && suspiciousData && (
+                            <span className="text-xs ml-1">
+                              (dropped {suspiciousData.ratingDrop})
+                            </span>
+                          )}
+                        </td>
+                        <td className={`px-4 py-2 ${isSuspicious ? 'text-red-300' : 'text-slate-300'}`}>
+                          {contest.rank}
+                        </td>
+                        <td className={`px-4 py-2 ${isSuspicious ? 'text-red-400' : 'text-slate-400'}`}>
+                          {contest.date}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -522,25 +651,80 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
 
       {/* Loading Progress */}
       {isLoading && totalToProcess > 0 && (
-        <div className="my-6 text-center">
-          <Loader2 className="animate-spin inline-block w-8 h-8 text-orange-400 mb-2" />
-          <p className="text-lg">
-            {totalToProcess > 1 ? `Processing ${totalToProcess} users... (This may take a moment)` : `Processing ${processingProgress} of ${totalToProcess} users...`}
-          </p>
-          <div className="w-full max-w-md mx-auto bg-slate-700 rounded-full h-2.5 mt-2 overflow-hidden">
+        <div className="my-6 mx-auto max-w-2xl bg-slate-800 rounded-xl p-6 shadow-xl">
+          <div className="flex items-center justify-center mb-4">
+            <Loader2 className="animate-spin w-8 h-8 text-orange-400 mr-3" />
+            <h3 className="text-xl font-semibold text-slate-100">Processing Profiles...</h3>
+          </div>
+          
+          {/* Progress Info */}
+          <div className="space-y-3 mb-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-300">
+                <strong className="text-orange-400">{processingProgress}</strong> completed
+              </span>
+              <span className="text-slate-300">
+                <strong className="text-blue-400">{totalToProcess - processingProgress}</strong> remaining
+              </span>
+              <span className="text-slate-300">
+                Total: <strong className="text-purple-400">{totalToProcess}</strong>
+              </span>
+            </div>
+            
+            {estimatedTimeRemaining > 0 && (
+              <div className="flex items-center justify-center text-sm text-slate-400">
+                <Clock size={16} className="mr-2" />
+                <span>Estimated time remaining: <strong className="text-slate-200">{Math.floor(estimatedTimeRemaining / 60)}m {estimatedTimeRemaining % 60}s</strong></span>
+              </div>
+            )}
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden shadow-inner">
             <div
-              className="bg-orange-500 h-2.5 rounded-full transition-all duration-300 ease-linear"
+              className="bg-gradient-to-r from-orange-500 to-pink-500 h-3 rounded-full transition-all duration-300 ease-out shadow-lg"
               style={{ width: `${totalToProcess > 0 ? (processingProgress / totalToProcess) * 100 : 0}%` }}
             ></div>
           </div>
+          
+          {/* Percentage */}
+          <div className="text-center mt-2 text-lg font-semibold text-orange-400">
+            {totalToProcess > 0 ? Math.round((processingProgress / totalToProcess) * 100) : 0}%
+          </div>
+
+          {/* Info Message */}
+          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <div className="flex items-start">
+              <AlertCircle size={18} className="text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
+              <div className="text-xs text-slate-300">
+                <p className="font-semibold text-blue-300 mb-1">Why is this taking time?</p>
+                <p>We're carefully scraping data from CodeChef to avoid rate limits and prevent getting blocked. 
+                We use <strong>safe delays (4.5-6 seconds)</strong> between requests with <strong>2 parallel workers</strong> 
+                to ensure reliable data fetching. Your patience ensures 100% success rate! 🎯</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Real-time results preview */}
+          {searchResults.length > 0 && (
+            <div className="mt-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <p className="text-sm text-green-300 flex items-center">
+                <CheckCircle size={16} className="mr-2" />
+                <strong>{searchResults.length}</strong> profile(s) loaded so far - displaying results in real-time below!
+              </p>
+            </div>
+          )}
         </div>
       )}
 
       {/* Results Table */}
-      {searchResults.length > 0 && !isLoading && (
+      {searchResults.length > 0 && (
         <div className="mt-10 max-w-7xl mx-auto bg-slate-800 rounded-xl shadow-2xl overflow-hidden">
           <div className="p-5 border-b border-slate-700 flex flex-wrap gap-4 items-center justify-between">
-            <h2 className="text-2xl font-semibold text-slate-100">Search Results ({processedResults.length})</h2>
+            <h2 className="text-2xl font-semibold text-slate-100">
+              Search Results ({processedResults.length})
+              {isLoading && <span className="text-sm text-orange-400 ml-2">(Loading more...)</span>}
+            </h2>
             <button
               onClick={handleDownloadTable}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors text-sm"
@@ -611,6 +795,16 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
                     </td>
                     <td className="px-5 py-4 font-semibold text-blue-400">
                       {Array.isArray(user.contest_history) ? user.contest_history.length : 0}
+                    </td>
+                    <td className="px-5 py-4 font-semibold">
+                      {user.cheatCount > 0 ? (
+                        <span className="flex items-center text-red-400">
+                          <AlertTriangle className="w-4 h-4 mr-1" /> 
+                          {user.cheatCount}
+                        </span>
+                      ) : (
+                        <span className="text-green-400">0</span>
+                      )}
                     </td>
                     <td className="px-5 py-4">
                       {user.error && !user.rating ? (
