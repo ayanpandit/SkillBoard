@@ -36,7 +36,7 @@ export const CONFIG = {
    * - VITE_CODECHEF_API_URL_5_DEV/PROD
    * - VITE_CODECHEF_API_URL_6_DEV/PROD
    */
-  NUM_WORKERS: 6,
+  NUM_WORKERS: 3,  // Reduced for safety to avoid CodeChef blocking
   
   /**
    * ⏱️ DELAY BETWEEN REQUESTS (milliseconds)
@@ -52,7 +52,17 @@ export const CONFIG = {
    * 
    * ⚠️ If you see frequent errors, INCREASE this value
    */
-  DELAY_BETWEEN_REQUESTS: 2000,
+  DELAY_BETWEEN_REQUESTS: 3500,  // Increased to 3.5s for safety - prevents CodeChef blocking
+  
+  /**
+   * 🎲 RANDOM DELAY JITTER (milliseconds)
+   * 
+   * Random variation added to delays to appear more human-like.
+   * Actual delay = DELAY_BETWEEN_REQUESTS ± (0 to RANDOM_JITTER)
+   * 
+   * This makes requests less predictable and more natural.
+   */
+  RANDOM_JITTER: 1000,  // Add 0-1 second random variation
   
   /**
    * 🔄 MAXIMUM RETRY ATTEMPTS
@@ -64,19 +74,20 @@ export const CONFIG = {
    * - 2-3: Balanced (default)
    * - 4-5: Maximum resilience, slower on failures
    */
-  MAX_RETRIES: 2,
+  MAX_RETRIES: 4,  // Increased retries for better success rate
   
   /**
    * ⏸️ DELAY BEFORE RETRY (milliseconds)
    * 
    * Time to wait before retrying a failed request.
+   * Uses exponential backoff: retry_1 = 5s, retry_2 = 10s, retry_3 = 15s, etc.
    * 
    * Guidelines:
    * - 2000ms (2s): Quick retry (default)
    * - 3000ms (3s): Balanced
    * - 5000ms (5s): Conservative, gives server time to recover
    */
-  RETRY_DELAY: 2000,
+  RETRY_DELAY: 5000,  // Increased to 5s - wait longer before retry to avoid blocking
   
   /**
    * ⏳ REQUEST TIMEOUT (milliseconds)
@@ -88,7 +99,7 @@ export const CONFIG = {
    * - 30000ms (30s): Balanced (default)
    * - 60000ms (60s): Patient, for slow connections
    */
-  REQUEST_TIMEOUT: 30000,
+  REQUEST_TIMEOUT: 60000,  // Increased to 60s for slower, safer requests
   
   /**
    * 🔊 VERBOSE LOGGING

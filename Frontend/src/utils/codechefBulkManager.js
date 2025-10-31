@@ -22,6 +22,7 @@ import { CONFIG } from './codechefBulkConfig';
 
 const NUM_WORKERS = CONFIG.NUM_WORKERS;
 const DELAY_BETWEEN_REQUESTS = CONFIG.DELAY_BETWEEN_REQUESTS;
+const RANDOM_JITTER = CONFIG.RANDOM_JITTER || 0;  // Random delay variation
 const MAX_RETRIES = CONFIG.MAX_RETRIES;
 const RETRY_DELAY = CONFIG.RETRY_DELAY;
 const REQUEST_TIMEOUT = CONFIG.REQUEST_TIMEOUT;
@@ -70,6 +71,19 @@ const getApiUrls = (isProduction) => {
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
+ * Get random delay with jitter to appear more human-like
+ * @param {number} baseDelay - Base delay in milliseconds
+ * @param {number} jitter - Maximum random variation in milliseconds
+ * @returns {number} Randomized delay
+ */
+const getRandomDelay = (baseDelay, jitter = 0) => {
+  if (jitter === 0) return baseDelay;
+  // Add random variation: baseDelay ± (0 to jitter)
+  const variation = Math.random() * jitter;
+  return Math.floor(baseDelay + variation);
+};
+
+/**
  * Fetch single user data with retry logic
  * @param {string} username - CodeChef username
  * @param {string} apiUrl - API endpoint URL
@@ -87,12 +101,15 @@ const fetchUserWithRetry = async (username, apiUrl, retryCount = 0) => {
       console.error(`❌ Error fetching ${username} (Attempt ${retryCount + 1}/${MAX_RETRIES + 1}):`, err.message);
     }
     
-    // Retry logic
+    // Retry logic with exponential backoff
     if (retryCount < MAX_RETRIES) {
+      // Exponential backoff: multiply retry delay by retry attempt
+      const backoffDelay = RETRY_DELAY * (retryCount + 1);
+      
       if (VERBOSE_LOGGING) {
-        console.log(`🔄 Retrying ${username} after ${RETRY_DELAY}ms...`);
+        console.log(`🔄 Retrying ${username} after ${backoffDelay}ms... (Attempt ${retryCount + 2}/${MAX_RETRIES + 1})`);
       }
-      await delay(RETRY_DELAY);
+      await delay(backoffDelay);
       return fetchUserWithRetry(username, apiUrl, retryCount + 1);
     }
     
@@ -152,10 +169,13 @@ const worker = async (usernames, apiUrl, workerId, onProgress) => {
     
     // Add delay between requests (except for the last request)
     if (i < usernames.length - 1) {
+      // Calculate delay with random jitter to appear more human-like
+      const actualDelay = getRandomDelay(DELAY_BETWEEN_REQUESTS, RANDOM_JITTER);
+      
       if (VERBOSE_LOGGING) {
-        console.log(`⏸️ Worker ${workerId}: Waiting ${DELAY_BETWEEN_REQUESTS}ms before next request...`);
+        console.log(`⏸️ Worker ${workerId}: Waiting ${actualDelay}ms before next request...`);
       }
-      await delay(DELAY_BETWEEN_REQUESTS);
+      await delay(actualDelay);
     }
   }
   
@@ -208,12 +228,16 @@ export const codechefBulkSearch = async (usernames, onProgress, onOverallProgres
   const startTime = Date.now();
   
   console.log('═══════════════════════════════════════════════════════');
-  console.log('🎯 CodeChef Bulk Search Started');
+  console.log('🎯 CodeChef Bulk Search Started (SAFE MODE)');
   console.log('═══════════════════════════════════════════════════════');
   console.log(`📊 Total usernames: ${usernames.length}`);
-  console.log(`👷 Number of workers: ${NUM_WORKERS}`);
-  console.log(`⏱️ Delay between requests: ${DELAY_BETWEEN_REQUESTS}ms`);
+  console.log(`👷 Number of workers: ${NUM_WORKERS} (conservative for safety)`);
+  console.log(`⏱️ Base delay: ${DELAY_BETWEEN_REQUESTS}ms`);
+  console.log(`🎲 Random jitter: ±${RANDOM_JITTER}ms (appears more human-like)`);
+  console.log(`🔄 Max retries: ${MAX_RETRIES} with exponential backoff`);
+  console.log(`⏳ Request timeout: ${REQUEST_TIMEOUT}ms`);
   console.log(`🌍 Environment: ${IS_PRODUCTION ? 'Production' : 'Development'}`);
+  console.log(`🛡️ Safety: HIGH (slower but avoids CodeChef blocking)`);
   console.log('═══════════════════════════════════════════════════════');
   
   // Get API URLs for all workers

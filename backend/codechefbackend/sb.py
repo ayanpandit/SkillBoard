@@ -22,6 +22,7 @@ class CodeChefScraper:
         self.last_request_time = 0
         self.min_delay = 2.0  # Minimum 2 seconds between requests
         self.max_delay = 4.0  # Maximum 4 seconds between requests
+        self.skip_rate_limit = False  # Flag to skip rate limiting (for single API calls)
         
     def _create_robust_session(self):
         """Create a session with retry logic and connection pooling."""
@@ -67,6 +68,10 @@ class CodeChefScraper:
 
     def _rate_limit(self):
         """Implement rate limiting with random jitter to avoid detection."""
+        # Skip rate limiting if flag is set (frontend handles it)
+        if self.skip_rate_limit:
+            return
+            
         current_time = time.time()
         time_since_last = current_time - self.last_request_time
         
@@ -374,14 +379,17 @@ class CodeChefScraper:
             return "N/A"
 
 
-# Single username endpoint
+# Single username endpoint (NO rate limiting - frontend handles it)
 @app.route('/api/codechef', methods=['GET'])
 def get_codechef_data():
     username = request.args.get('username')
     if not username:
         return jsonify({"error": "Username is required"}), 400
 
+    # Create scraper but skip internal rate limiting for single requests
+    # Frontend bulk manager already handles rate limiting
     scraper = CodeChefScraper()
+    scraper.skip_rate_limit = True  # Flag to skip rate limiting
     data = scraper.get_user_data(username)
     return jsonify(data)
 
