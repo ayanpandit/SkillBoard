@@ -26,10 +26,10 @@ export default function App() {
     </div>
   );
 }*/
-// ✅ FIXED App.jsx with proper lowercase routing and normalization
+// ✅ Hash routing for better compatibility with static hosting
 import "./index.css";
 import {
-  BrowserRouter as Router,
+  HashRouter as Router,
   Routes,
   Route,
   useLocation,
@@ -112,7 +112,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router basename="/">
+    <Router>
       <ToastProvider>
         <AppWrapper />
       </ToastProvider>

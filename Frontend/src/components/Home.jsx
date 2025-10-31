@@ -31,16 +31,17 @@ const HomePage = () => {
             borderColor: 'border-amber-200',
             features: [
                 { icon: Trophy, text: 'Heatmap' },
-                { icon: Users, text: 'Userifo' },
+                { icon: Users, text: 'User Info' },
                 { icon: Star, text: 'Stars' },
-                { icon: Code2, text: 'Manymore'}
+                { icon: Code2, text: 'Many More'}
             ],
             stats: {
                 contests: '150+',
                 problems: '3000+',
                 users: '500K+',
                 difficulty: 'Beginner to Expert'
-            }
+            },
+            available: true
         },
         {
             id: 'leetcode',
@@ -52,37 +53,62 @@ const HomePage = () => {
             borderColor: 'border-orange-200',
             features: [
                 { icon: Trophy, text: 'Heatmap' },
-                { icon: Users, text: 'Userifo' },
+                { icon: Users, text: 'User Info' },
                 { icon: Star, text: 'Stars' },
-                { icon: Code2, text: 'Manymore'}
+                { icon: Code2, text: 'Many More'}
             ],
             stats: {
                 contests: '300+',
                 problems: '2500+',
                 users: '1M+',
                 difficulty: 'Easy to Hard'
-            }
+            },
+            available: true
         },
         {
-            id: 'CodeForces',
-            name: 'CodeFoces',
-            description: 'competative coding interview preparation platform with algorithmic challenges',
+            id: 'codeforces',
+            name: 'CodeForces',
+            description: 'Competitive coding interview preparation platform with algorithmic challenges',
             logo: '🧠',
-            color: 'from-orange-500 to-red-600',
-            bgColor: 'bg-gradient-to-br from-orange-50 to-red-50',
-            borderColor: 'border-orange-200',
+            color: 'from-blue-500 to-indigo-600',
+            bgColor: 'bg-gradient-to-br from-blue-50 to-indigo-50',
+            borderColor: 'border-blue-200',
             features: [
-                { icon: Trophy, text: 'Heatmap' },
-                { icon: Users, text: 'Userifo' },
-                { icon: Star, text: 'Stars' },
-                { icon: Code2, text: 'Manymore'}
+                { icon: Trophy, text: 'Rating History' },
+                { icon: Users, text: 'User Info' },
+                { icon: Star, text: 'Rank' },
+                { icon: Code2, text: 'Many More'}
             ],
             stats: {
-                contests: '300+',
-                problems: '2500+',
-                users: '1M+',
-                difficulty: 'Easy to Hard'
-            }
+                contests: '1200+',
+                problems: '7000+',
+                users: '600K+',
+                difficulty: 'Newbie to Grandmaster'
+            },
+            available: true
+        },
+        {
+            id: 'hackerrank',
+            name: 'HackerRank',
+            description: 'We are working hard to bring this amazing platform to you soon!',
+            logo: '🚀',
+            color: 'from-green-500 to-emerald-600',
+            bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
+            borderColor: 'border-green-200',
+            features: [
+                { icon: Trophy, text: 'Coming Soon' },
+                { icon: Users, text: 'Stay Tuned' },
+                { icon: Star, text: 'In Progress' },
+                { icon: Code2, text: 'Work in Progress'}
+            ],
+            stats: {
+                contests: 'Soon',
+                problems: 'Soon',
+                users: 'Soon',
+                difficulty: 'Coming Soon'
+            },
+            available: false,
+            comingSoon: true
         }
     ];
 
@@ -96,10 +122,11 @@ const HomePage = () => {
         if (platformId === 'codechef') {
             navigate('/codechefloder');
         } else if (platformId === 'leetcode') {
-            navigate('/LeetCodeProfileAnalyze');
-        }
-        else if (platformId === 'CodeForces') {
+            navigate('/leetcodeloder');
+        } else if (platformId === 'codeforces') {
             navigate('/codeforcesloder');
+        } else if (platformId === 'hackerrank') {
+            showToast('HackerRank analyzer is coming soon! Stay tuned 🚀', 'info');
         }
     };
 
@@ -169,11 +196,18 @@ const HomePage = () => {
                             {platforms.map((platform, index) => (
                                 <div
                                     key={platform.id}
-                                    className={`${platform.bgColor} rounded-2xl p-6 border-2 ${platform.borderColor} transform hover:scale-105 transition-all duration-500 hover:shadow-2xl backdrop-blur-lg bg-opacity-90`}
+                                    className={`${platform.bgColor} rounded-2xl p-6 border-2 ${platform.borderColor} transform hover:scale-105 transition-all duration-500 hover:shadow-2xl backdrop-blur-lg bg-opacity-90 ${platform.comingSoon ? 'opacity-80 relative overflow-hidden' : ''}`}
                                     itemScope 
                                     itemType="https://schema.org/SoftwareApplication"
                                     itemProp="itemListElement"
                                 >
+                                    {/* Coming Soon Badge */}
+                                    {platform.comingSoon && (
+                                        <div className="absolute top-4 right-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg transform rotate-12 animate-pulse">
+                                            Coming Soon 🚀
+                                        </div>
+                                    )}
+
                                     {/* Card Header */}
                                     <div className="flex items-center justify-between mb-6">
                                         <div className="flex items-center space-x-3">
@@ -183,13 +217,13 @@ const HomePage = () => {
                                                 <p className="text-sm text-gray-600 max-w-xs" itemProp="description">{platform.description}</p>
                                             </div>
                                         </div>
-                                        <ExternalLink className="w-5 h-5 text-gray-500 hover:text-gray-700 cursor-pointer transition-colors" />
+                                        {!platform.comingSoon && <ExternalLink className="w-5 h-5 text-gray-500 hover:text-gray-700 cursor-pointer transition-colors" />}
                                     </div>
 
                                     {/* Features Grid */}
                                     <div className="grid grid-cols-2 gap-3 mb-6">
-                                        {platform.features.map((feature, index) => (
-                                            <div key={index} className="flex items-center space-x-2 p-2 bg-white/50 rounded-lg">
+                                        {platform.features.map((feature, featureIndex) => (
+                                            <div key={featureIndex} className="flex items-center space-x-2 p-2 bg-white/50 rounded-lg">
                                                 <feature.icon className="w-4 h-4 text-gray-700 flex-shrink-0" />
                                                 <span className="text-xs font-medium text-gray-700">{feature.text}</span>
                                             </div>
@@ -199,9 +233,14 @@ const HomePage = () => {
                                     {/* Action Button */}
                                     <button
                                         onClick={() => handleAnalyzerNavigation(platform.id)}
-                                        className={`w-full py-3 bg-gradient-to-r ${platform.color} text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2`}
+                                        disabled={platform.comingSoon}
+                                        className={`w-full py-3 bg-gradient-to-r ${platform.color} text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-2 ${platform.comingSoon ? 'opacity-60 cursor-not-allowed hover:scale-100' : ''}`}
                                     >
-                                        {currentUser ? (
+                                        {platform.comingSoon ? (
+                                            <>
+                                                <span>We're Working Hard on This! 🛠️</span>
+                                            </>
+                                        ) : currentUser ? (
                                             <>
                                                 <span>Analyze {platform.name} Profile</span>
                                                 <Code2 className="w-5 h-5" />
@@ -217,17 +256,17 @@ const HomePage = () => {
                             ))}
                         </div>
 
-                        {/* Coming Soon */}
+                        {/* Coming Soon - Now shows other platforms */}
                         <div className="text-center mt-12">
                             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 max-w-2xl mx-auto">
-                                <h3 className="text-xl font-bold text-white mb-4">More Platforms Coming Soon</h3>
+                                <h3 className="text-xl font-bold text-white mb-4">More Platforms on Our Roadmap</h3>
                                 <p className="text-gray-300 mb-4 text-sm">
-                                    We're working on adding support for HackerRank, AtCoder, and more!
+                                    We're continuously expanding to support more competitive programming platforms!
                                 </p>
                                 <div className="flex flex-wrap justify-center gap-2">
-                                    {['HackerRank', 'AtCoder', 'TopCoder'].map((platform) => (
-                                        <span key={platform} className="px-3 py-1 bg-white/20 text-white rounded-full text-xs">
-                                            {platform}
+                                    {['AtCoder', 'TopCoder', 'HackerEarth'].map((platformName) => (
+                                        <span key={platformName} className="px-3 py-1 bg-white/20 text-white rounded-full text-xs">
+                                            {platformName}
                                         </span>
                                     ))}
                                 </div>

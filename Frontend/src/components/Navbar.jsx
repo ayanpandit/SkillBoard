@@ -112,11 +112,11 @@ const Navbar = () => {    const navigate = useNavigate();
             isDropdown: true,
             subItems: [
                 { name: 'CodeChef', action: () => handleAnalyzerNavigation('/codechefloder') },
-                { name: 'LeetCode', action: () => handleAnalyzerNavigation('/LeetCodeProfileAnalyze') },
-                 { name: 'CodeFoces', action: () => handleAnalyzerNavigation('/codeforcesloder') }
+                { name: 'LeetCode', action: () => handleAnalyzerNavigation('/leetcodeloder') },
+                { name: 'CodeForces', action: () => handleAnalyzerNavigation('/codeforcesloder') }
             ]
         },
-        { name: 'About', icon: User, action: () => navigate('/About') },        { name: 'Contact', icon: Phone, action: () => {
+        { name: 'About', icon: User, action: () => navigate('/about') },        { name: 'Contact', icon: Phone, action: () => {
             const currentPath = window.location.pathname;
             const scrollToFooter = () => {
                 // First try to scroll to the absolute bottom
