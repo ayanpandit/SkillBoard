@@ -111,9 +111,9 @@ const Navbar = () => {    const navigate = useNavigate();
             icon: Briefcase, 
             isDropdown: true,
             subItems: [
-                { name: 'CodeChef', action: () => handleAnalyzerNavigation('/codechefloder') },
-                { name: 'LeetCode', action: () => handleAnalyzerNavigation('/leetcodeloder') },
-                { name: 'CodeForces', action: () => handleAnalyzerNavigation('/codeforcesloder') }
+                { name: 'CodeChef', route: '/codechefloder' },
+                { name: 'LeetCode', route: '/leetcodeloder' },
+                { name: 'CodeForces', route: '/codeforcesloder' }
             ]
         },
         { name: 'About', icon: User, action: () => navigate('/about') },        { name: 'Contact', icon: Phone, action: () => {
@@ -231,59 +231,60 @@ const Navbar = () => {    const navigate = useNavigate();
                 </div>
 
                 {/* Desktop Dropdowns Section - Inside Navbar */}
-                <div className={`hidden md:block transition-all duration-300 overflow-hidden ${
+                <div className={`hidden md:block transition-all duration-500 ease-in-out overflow-hidden ${
                     (openDropdown === 'Services' || showUserDropdown)
-                        ? 'max-h-64 opacity-100' 
+                        ? 'max-h-32 opacity-100' 
                         : 'max-h-0 opacity-0'
                 }`}>
                     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
-                        <div className="border-t border-white/10 pt-4">
-                            <div className="flex justify-center gap-8">
-                                {/* Services Dropdown Content */}
-                                {openDropdown === 'Services' && navItems.find(item => item.name === 'Services')?.subItems && (
-                                    <div className="py-3 px-6 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 animate-slideDown min-w-[240px]">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none rounded-2xl"></div>
-                                        <div className="space-y-2 relative">
-                                            {navItems.find(item => item.name === 'Services').subItems.map((subItem, idx) => (
-                                                <button
-                                                    key={subItem.name}
-                                                    onClick={subItem.action}
-                                                    className="w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group rounded-xl"
-                                                    style={{
-                                                        animationDelay: `${idx * 50}ms`
-                                                    }}
-                                                >
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
-                                                    <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">{subItem.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                
-                                {/* User Dropdown Content */}
-                                {showUserDropdown && currentUser && (
-                                    <div className="py-3 px-6 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 animate-slideDown min-w-[240px]">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none rounded-2xl"></div>
-                                        <div className="space-y-2 relative">
-                                            <button
-                                                onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
-                                                className="w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group rounded-xl"
-                                            >
-                                                <User className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
-                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Profile</span>
-                                            </button>
-                                            <button
-                                                onClick={handleLogout}
-                                                className="w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group rounded-xl"
-                                            >
-                                                <LogOut className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
-                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Logout</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="border-t border-white/10 pt-6">
+                            {/* Services Dropdown Content - Horizontal */}
+                            {openDropdown === 'Services' && navItems.find(item => item.name === 'Services')?.subItems && (
+                                <div className="flex justify-center items-center gap-8 animate-fadeIn">
+                                    {navItems.find(item => item.name === 'Services').subItems.map((subItem, idx) => (
+                                        <button
+                                            key={subItem.name}
+                                            onClick={() => handleAnalyzerNavigation(subItem.route)}
+                                            className="px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-2 group relative"
+                                            style={{
+                                                animation: `fadeInUp 0.4s ease-out ${idx * 0.1}s both`
+                                            }}
+                                        >
+                                            <div className="w-2 h-2 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
+                                            <span className="font-medium text-lg group-hover:scale-110 transition-transform duration-300">{subItem.name}</span>
+                                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {/* User Dropdown Content - Horizontal */}
+                            {showUserDropdown && currentUser && (
+                                <div className="flex justify-center items-center gap-8 animate-fadeIn">
+                                    <button
+                                        onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
+                                        className="px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-3 group relative"
+                                        style={{
+                                            animation: 'fadeInUp 0.4s ease-out 0s both'
+                                        }}
+                                    >
+                                        <User className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
+                                        <span className="font-medium text-lg group-hover:scale-110 transition-transform duration-300">Profile</span>
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                                    </button>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-3 group relative"
+                                        style={{
+                                            animation: 'fadeInUp 0.4s ease-out 0.1s both'
+                                        }}
+                                    >
+                                        <LogOut className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
+                                        <span className="font-medium text-lg group-hover:scale-110 transition-transform duration-300">Logout</span>
+                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -323,9 +324,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                                         onClick={() => {
                                                             setIsMenuOpen(false);
                                                             setOpenDropdown('');
-                                                            setTimeout(() => {
-                                                                handleAnalyzerNavigation(subItem.action()); // Using handleAnalyzerNavigation
-                                                            }, 100);
+                                                            handleAnalyzerNavigation(subItem.route);
                                                         }}
                                                         className="w-full px-4 py-2.5 rounded-xl text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-2 group"
                                                     >
@@ -411,10 +410,10 @@ const Navbar = () => {    const navigate = useNavigate();
                     }
                 }
                 
-                @keyframes slideDown {
+                @keyframes fadeInUp {
                     from {
                         opacity: 0;
-                        transform: translateY(-10px);
+                        transform: translateY(10px);
                     }
                     to {
                         opacity: 1;
@@ -422,8 +421,17 @@ const Navbar = () => {    const navigate = useNavigate();
                     }
                 }
                 
-                .animate-slideDown {
-                    animation: slideDown 0.2s ease-out forwards;
+                @keyframes fadeIn {
+                    from {
+                        opacity: 0;
+                    }
+                    to {
+                        opacity: 1;
+                    }
+                }
+                
+                .animate-fadeIn {
+                    animation: fadeIn 0.3s ease-out forwards;
                 }
             `}</style>
             </nav>
