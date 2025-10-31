@@ -8,14 +8,9 @@ import {
   Download, Filter, RotateCcw
 } from 'lucide-react';
 
-// Placeholder for the Codeforces API URL
-const API_URL = import.meta.env.PROD 
-  ? import.meta.env.VITE_CODEFORCES_API_URL_PROD
-  : import.meta.env.VITE_CODEFORCES_API_URL_DEV;
-
-const API_BULK_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_CODEFORCES_API_BULK_URL_PROD
-  : import.meta.env.VITE_CODEFORCES_API_BULK_URL_DEV;
+// CodeForces API endpoints - single URL for both dev and production
+const API_URL = import.meta.env.VITE_CODEFORCES_API_URL;
+const API_BULK_URL = import.meta.env.VITE_CODEFORCES_API_BULK_URL;
 
 const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   // State management

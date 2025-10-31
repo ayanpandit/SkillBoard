@@ -8,12 +8,8 @@ import {
 } from 'lucide-react';
 import { codechefBulkSearch } from '../utils/codechefBulkManager';
 
-const IS_PRODUCTION = import.meta.env.PROD;
-
-// CodeChef backend API endpoint loaded from .env (for single user search)
-const API_URL = IS_PRODUCTION
-  ? import.meta.env.VITE_CODECHEF_API_URL_PROD
-  : import.meta.env.VITE_CODECHEF_API_URL_DEV;
+// CodeChef API endpoint - single URL for both dev and production
+const API_URL = import.meta.env.VITE_CODECHEF_API_URL;
 
 // --- Reusable UI Components ---
 

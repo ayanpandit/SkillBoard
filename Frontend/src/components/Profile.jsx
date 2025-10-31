@@ -201,112 +201,271 @@ const Profile = () => {
   }, []);
 
   if (!currentUser) {
-    return <p className="text-center text-white py-10">Please log in to view your profile.</p>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center pt-20 px-4">
+        <div className="text-center bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-gray-700">
+          <p className="text-gray-300 text-lg">Please log in to view your profile.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center py-10 px-4">
-      <div className="w-full max-w-2xl bg-gray-800 p-8 rounded-lg shadow-xl">
-        <h1 className="text-3xl font-bold text-purple-400 mb-8 text-center">Your Profile</h1>
-        
-        {message && <p className={`mb-4 text-center p-3 rounded-md ${message.includes('Error') ? 'bg-red-500/30 text-red-300' : 'bg-green-500/30 text-green-300'}`}>{message}</p>}
-
-        <form onSubmit={handleUpdateProfile} className="space-y-6 mb-10">
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-            <input 
-              type="text" 
-              id="name" 
-              value={name} 
-              onChange={handleNameChange} 
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-purple-500 focus:border-purple-500 placeholder-gray-500"
-              placeholder="Your Name"
-            />
-          </div>
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email (Cannot be changed here)</label>
-            <input 
-              type="email" 
-              id="email" 
-              value={email} 
-              readOnly 
-              className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-gray-400 cursor-not-allowed"
-            />
-          </div>
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full py-2 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-md hover:from-purple-700 hover:to-pink-700 transition duration-300 disabled:opacity-50"
-          >
-            {loading ? 'Updating...' : 'Update Profile'}
-          </button>
-        </form>
-
-        <div className="space-y-6">
-          <h2 className="text-2xl font-semibold text-purple-400 mb-4">Upload Files (CSV/Excel)</h2>
-          <div>
-            <label htmlFor="fileUpload" className="block text-sm font-medium text-gray-300 mb-1">Select File</label>
-            <input 
-              type="file" 
-              id="fileUpload"
-              onChange={handleFileChange} 
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-              className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 transition"
-            />
-          </div>
-          <button 
-            onClick={handleFileUpload} 
-            disabled={loading || !file}
-            className="w-full py-2 px-4 bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold rounded-md hover:from-green-600 hover:to-teal-600 transition duration-300 disabled:opacity-50"
-          >
-            {loading ? 'Uploading...' : 'Upload File'}
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        {/* Header Section */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-purple-600 bg-clip-text text-transparent mb-3">
+            Your Profile
+          </h1>
+          <p className="text-gray-400 text-sm sm:text-base">Manage your account and uploaded files</p>
         </div>
 
-        <div className="mt-10">
-          <h2 className="text-2xl font-semibold text-purple-400 mb-4">Your Uploaded Files</h2>
-          {uploadedFiles.length > 0 ? (
-            <ul className="space-y-3">
-              {uploadedFiles.map((f, index) => (                <li key={index} className="bg-gray-700 p-3 rounded-md flex justify-between items-center">
-                  <span className="truncate text-gray-300">{f.name}</span>
-                  <button 
-                    onClick={() => handleFileOptions(f)} 
-                    className="px-4 py-1.5 bg-purple-600 text-white rounded-md hover:bg-purple-500 transition text-sm"
-                  >
-                    Options
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-400 text-center">No files uploaded yet.</p>
-          )}
-        </div>        {/* File Options Popup */}
+        {/* Message Alert */}
+        {message && (
+          <div className={`mb-6 p-4 rounded-lg shadow-lg border ${
+            message.includes('Error') 
+              ? 'bg-red-500/20 border-red-500/50 text-red-300' 
+              : 'bg-green-500/20 border-green-500/50 text-green-300'
+          }`}>
+            <p className="text-center text-sm sm:text-base">{message}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Profile Info */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Profile Card */}
+            <div className="bg-gray-800/60 backdrop-blur-sm p-6 rounded-xl shadow-xl border border-gray-700">
+              <div className="flex flex-col items-center mb-6">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-3xl font-bold text-white mb-4 shadow-lg">
+                  {name.charAt(0).toUpperCase() || email.charAt(0).toUpperCase()}
+                </div>
+                <h2 className="text-xl font-semibold text-white mb-1">{name || 'User'}</h2>
+                <p className="text-gray-400 text-sm break-all text-center px-2">{email}</p>
+              </div>
+
+              <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
+                    Display Name
+                  </label>
+                  <input 
+                    type="text" 
+                    id="name" 
+                    value={name} 
+                    onChange={handleNameChange} 
+                    className="w-full px-4 py-2.5 bg-gray-700/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder-gray-500 transition-all duration-200"
+                    placeholder="Your Name"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <input 
+                    type="email" 
+                    id="email" 
+                    value={email} 
+                    readOnly 
+                    className="w-full px-4 py-2.5 bg-gray-700/30 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-purple-500/50 transform hover:scale-[1.02]"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Updating...
+                    </span>
+                  ) : 'Update Profile'}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          {/* Right Column - File Management */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* File Upload Card */}
+            <div className="bg-gray-800/60 backdrop-blur-sm p-6 rounded-xl shadow-xl border border-gray-700">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center mr-3">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Upload Files</h2>
+                  <p className="text-gray-400 text-sm">CSV or Excel files</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="fileUpload" className="block text-sm font-medium text-gray-300 mb-2">
+                    Select File
+                  </label>
+                  <input 
+                    type="file" 
+                    id="fileUpload"
+                    onChange={handleFileChange} 
+                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+                    className="w-full text-sm text-gray-400 
+                      file:mr-4 file:py-2.5 file:px-6 
+                      file:rounded-lg file:border-0 
+                      file:text-sm file:font-semibold 
+                      file:bg-gradient-to-r file:from-purple-600 file:to-pink-600 
+                      file:text-white hover:file:from-purple-700 hover:file:to-pink-700 
+                      file:cursor-pointer file:transition-all file:duration-300
+                      cursor-pointer bg-gray-700/30 rounded-lg p-2 border border-gray-600"
+                  />
+                  {file && (
+                    <p className="text-sm text-green-400 mt-2">Selected: {file.name}</p>
+                  )}
+                </div>
+                
+                <button 
+                  onClick={handleFileUpload} 
+                  disabled={loading || !file}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-green-500/50 transform hover:scale-[1.02]"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center">
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Uploading...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      Upload File
+                    </span>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Uploaded Files Card */}
+            <div className="bg-gray-800/60 backdrop-blur-sm p-6 rounded-xl shadow-xl border border-gray-700">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center mr-3">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-white">Your Files</h2>
+                    <p className="text-gray-400 text-sm">{uploadedFiles.length} file(s) uploaded</p>
+                  </div>
+                </div>
+              </div>
+
+              {uploadedFiles.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {uploadedFiles.map((f, index) => (
+                    <div 
+                      key={index} 
+                      className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 hover:border-purple-500 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20 group"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0 mr-3">
+                          <div className="flex items-center mb-2">
+                            <svg className="w-5 h-5 text-purple-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-200 truncate">{f.name}</span>
+                          </div>
+                          <p className="text-xs text-gray-500">Click options to manage</p>
+                        </div>
+                        <button 
+                          onClick={() => handleFileOptions(f)} 
+                          className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 shadow-md hover:shadow-purple-500/50 transform group-hover:scale-105"
+                        >
+                          Options
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-gray-400 text-base">No files uploaded yet</p>
+                  <p className="text-gray-500 text-sm mt-1">Upload your first file to get started</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* File Options Popup */}
         {showPopup && popupFile && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg max-w-sm w-full" ref={popupRef}>
-              <h3 className="text-lg font-semibold text-purple-400 mb-4">File Options</h3>
-              <p className="text-gray-300 mb-4">What would you like to do with <span className="font-medium">{popupFile.name}</span>?</p>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div 
+              className="bg-gray-800 p-6 sm:p-8 rounded-2xl shadow-2xl max-w-md w-full border border-gray-700 animate-slideUp" 
+              ref={popupRef}
+            >
+              <div className="flex items-center mb-6">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center mr-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-white">File Options</h3>
+                  <p className="text-sm text-gray-400">Choose an action</p>
+                </div>
+              </div>
+              
+              <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+                <p className="text-gray-300 text-sm break-all">
+                  <span className="font-medium text-purple-400">File:</span> {popupFile.name}
+                </p>
+              </div>
+
               <div className="space-y-3">
                 <button 
                   onClick={() => {
                     window.open(popupFile.url, '_blank');
                   }}
-                  className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-500 transition flex items-center justify-center"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-blue-500/50 transform hover:scale-[1.02]"
                 >
-                  <span>Open in View Mode</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  View File
                 </button>
                 
                 <a 
                   href={popupFile.url} 
                   download
-                  className="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-500 transition flex items-center justify-center"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-green-500/50 transform hover:scale-[1.02]"
                 >
-                  <span>Download File</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download
                 </a>
-                  <button 
+
+                <button 
                   onClick={() => {
-                    // Navigate to CodeChef analyzer with file URL for bulk upload
                     navigate('/codechefloder', { 
                       state: { 
                         fileUrl: popupFile.url, 
@@ -315,39 +474,78 @@ const Profile = () => {
                     });
                     setShowPopup(false);
                   }}
-                  className="w-full py-2 px-4 bg-yellow-600 text-white rounded-md hover:bg-yellow-500 transition flex items-center justify-center"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-orange-500/50 transform hover:scale-[1.02]"
                 >
-                  <span>Open in CodeChef Analyzer</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  CodeChef Analyzer
                 </button>
                 
                 <button 
-                  onClick={() => {                    // Navigate to LeetCode analyzer with file URL for bulk upload
+                  onClick={() => {
                     navigate('/leetcodeloder', { state: { fileUrl: popupFile.url, fileName: popupFile.name } });
                     setShowPopup(false);
                   }}
-                  className="w-full py-2 px-4 bg-orange-600 text-white rounded-md hover:bg-orange-500 transition flex items-center justify-center"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-lg hover:from-yellow-700 hover:to-yellow-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-yellow-500/50 transform hover:scale-[1.02]"
                 >
-                  <span>Open in LeetCode Analyzer</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  LeetCode Analyzer
                 </button>
                 
                 <button 
                   onClick={handleDeleteFile}
-                  className="w-full py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-500 transition flex items-center justify-center"
+                  disabled={loading}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg hover:from-red-700 hover:to-red-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-red-500/50 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span>{loading ? 'Deleting...' : 'Delete File'}</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {loading ? 'Deleting...' : 'Delete File'}
                 </button>
                 
                 <button 
                   onClick={() => setShowPopup(false)}
-                  className="w-full py-2 px-4 bg-gray-600 text-white rounded-md hover:bg-gray-500 transition flex items-center justify-center mt-2"
+                  className="w-full py-3 px-4 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-all duration-300 flex items-center justify-center"
                 >
-                  <span>Cancel</span>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel
                 </button>
               </div>
             </div>
           </div>
         )}
       </div>
+      
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        
+        .animate-slideUp {
+          animation: slideUp 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

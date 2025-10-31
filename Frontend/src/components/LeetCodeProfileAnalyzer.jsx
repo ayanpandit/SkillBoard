@@ -8,21 +8,9 @@ import {
   Download, Filter, RotateCcw
 } from 'lucide-react';
 
-const IS_PRODUCTION = import.meta.env.PROD;
-
-
-// Old LeetCode backend (suspended)
-// const API_URL_OLD = 'https://leetcodebackend-zjtf.onrender.com/api/leetcode';
-// const API_BULK_URL_OLD = 'https://leetcodebackend-zjtf.onrender.com/api/leetcode/bulk';
-
-// New LeetCode backend (active) - now loaded from .env
-const API_URL = IS_PRODUCTION
-  ? import.meta.env.VITE_API_URL_PROD
-  : import.meta.env.VITE_API_URL_DEV;
-
-const API_BULK_URL = IS_PRODUCTION
-  ? import.meta.env.VITE_API_BULK_URL_PROD
-  : import.meta.env.VITE_API_BULK_URL_DEV;
+// LeetCode API endpoints - single URL for both dev and production
+const API_URL = import.meta.env.VITE_API_URL;
+const API_BULK_URL = import.meta.env.VITE_API_BULK_URL;
 
 
 

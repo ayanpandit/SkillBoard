@@ -36,7 +36,7 @@ export const CONFIG = {
    * - VITE_CODECHEF_API_URL_5_DEV/PROD
    * - VITE_CODECHEF_API_URL_6_DEV/PROD
    */
-  NUM_WORKERS: 2,  // Ultra-conservative: Only 2 workers for maximum safety (300+ users)
+  NUM_WORKERS: 6,  // Ultra-conservative: Only 6 workers for maximum safety (300+ users)
   
   /**
    * ⏱️ DELAY BETWEEN REQUESTS (milliseconds)

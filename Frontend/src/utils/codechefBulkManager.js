@@ -34,27 +34,20 @@ const VERBOSE_LOGGING = CONFIG.VERBOSE_LOGGING;
 
 /**
  * Get API URLs from environment variables based on NUM_WORKERS
- * @param {boolean} isProduction - Whether running in production mode
  * @returns {Array<string>} Array of API URLs
  */
-const getApiUrls = (isProduction) => {
+const getApiUrls = () => {
   const urls = [];
   
   for (let i = 1; i <= NUM_WORKERS; i++) {
-    const envKey = isProduction 
-      ? `VITE_CODECHEF_API_URL_${i}_PROD`
-      : `VITE_CODECHEF_API_URL_${i}_DEV`;
-    
+    const envKey = `VITE_CODECHEF_API_URL_${i}`;
     const url = import.meta.env[envKey];
     
     if (!url) {
       console.warn(`⚠️ Missing environment variable: ${envKey}`);
       console.warn(`Using fallback URL for worker ${i}`);
       // Fallback to default API if specific worker URL is not found
-      const fallbackKey = isProduction 
-        ? 'VITE_CODECHEF_API_URL_PROD'
-        : 'VITE_CODECHEF_API_URL_DEV';
-      urls.push(import.meta.env[fallbackKey]);
+      urls.push(import.meta.env.VITE_CODECHEF_API_URL);
     } else {
       urls.push(url);
     }
@@ -224,7 +217,6 @@ const distributeUsernames = (usernames) => {
  * );
  */
 export const codechefBulkSearch = async (usernames, onProgress, onOverallProgress) => {
-  const IS_PRODUCTION = import.meta.env.PROD;
   const startTime = Date.now();
   
   console.log('═══════════════════════════════════════════════════════');
@@ -238,13 +230,12 @@ export const codechefBulkSearch = async (usernames, onProgress, onOverallProgres
   console.log(`🔄 Max retries: ${MAX_RETRIES} with exponential backoff`);
   console.log(`📡 Retry delays: 6s, 12s, 18s, 24s, 30s (total 90s if all fail)`);
   console.log(`⏳ Request timeout: ${REQUEST_TIMEOUT}ms (60s)`);
-  console.log(`🌍 Environment: ${IS_PRODUCTION ? 'Production' : 'Development'}`);
   console.log(`🛡️ Safety Level: MAXIMUM (ZERO errors target, 300+ users safe)`);
   console.log(`⚡ Staggered start: 2s delay between workers (prevents simultaneous hits)`);
   console.log('═══════════════════════════════════════════════════════');
   
   // Get API URLs for all workers
-  const apiUrls = getApiUrls(IS_PRODUCTION);
+  const apiUrls = getApiUrls();
   console.log('📍 API Endpoints:', apiUrls);
   
   // Distribute usernames across workers
