@@ -153,8 +153,8 @@ const Navbar = () => {    const navigate = useNavigate();
         <> {/* Added Fragment to wrap Navbar and LoginSignup */}
             <nav className={
                 isAnalyzerPage
-                    ? "relative rounded-2xl  backdrop-blur-lg shadow-2xl border border-white/20 mt-4 mb-0 md:mt-6 md:mb-0 lg:mt-8 lg:mb-0 mx-12" // Set bottom margins to 0
-                    : `fixed top-9 left-12 right-12 z-50 transition-all duration-500 rounded-2xl ${
+                    ? "relative rounded-2xl backdrop-blur-lg shadow-2xl border border-white/20 mt-4 mb-0 md:mt-6 md:mb-0 lg:mt-8 lg:mb-0 mx-12 overflow-visible" // Set bottom margins to 0
+                    : `fixed top-9 left-12 right-12 z-50 transition-all duration-500 rounded-2xl overflow-visible ${
                         !visible
                             ? 'opacity-0 translate-y-[-100%] pointer-events-none'
                             : isScrolled
@@ -175,12 +175,12 @@ const Navbar = () => {    const navigate = useNavigate();
                         </div>
 
                         {/* Desktop Navigation */}
-                        <div className="hidden md:flex space-x-8">
+                        <div className="hidden md:flex space-x-8 items-center">
                             {navItems.map((item) => (
-                                <div key={item.name} className="dropdown-container relative">
+                                <div key={item.name} className="dropdown-container relative flex flex-col items-center">
                                     <button
                                         onClick={() => item.isDropdown ? handleDropdownClick(item.name) : item.action()}
-                                        className="text-white hover:text-purple-400 transition-colors duration-200 flex items-center space-x-1 group"
+                                        className="text-white hover:text-purple-400 transition-colors duration-200 flex items-center space-x-1 group py-2"
                                     >
                                         <item.icon className="w-4 h-4" />
                                         <span>{item.name}</span>
@@ -188,26 +188,6 @@ const Navbar = () => {    const navigate = useNavigate();
                                             <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openDropdown === item.name ? 'rotate-180' : ''}`} />
                                         )}
                                     </button>
-                                    
-                                    {/* Desktop Dropdown Menu */}
-                                    {item.isDropdown && openDropdown === item.name && (
-                                        <div className="absolute top-full left-0 mt-3 py-3 w-56 bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-500/30 overflow-hidden animate-slideDown">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none"></div>
-                                            {item.subItems.map((subItem, idx) => (
-                                                <button
-                                                    key={subItem.name}
-                                                    onClick={subItem.action}
-                                                    className="relative w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group"
-                                                    style={{
-                                                        animationDelay: `${idx * 50}ms`
-                                                    }}
-                                                >
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
-                                                    <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">{subItem.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             ))}
                         </div>
@@ -215,33 +195,14 @@ const Navbar = () => {    const navigate = useNavigate();
                         {/* CTA Button - Desktop */}
                         <div className="hidden md:block">
                             {currentUser ? (
-                                <div className="relative dropdown-container">
+                                <div className="relative dropdown-container flex flex-col items-end">
                                     <button
                                         onClick={() => setShowUserDropdown(!showUserDropdown)}
-                                        className="flex items-center space-x-2 text-white hover:text-purple-400 transition-colors duration-200"
+                                        className="flex items-center space-x-2 text-white hover:text-purple-400 transition-colors duration-200 py-2"
                                     >
                                         <span>Hi, {currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]}</span>
                                         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showUserDropdown ? 'rotate-180' : ''}`} />
                                     </button>
-                                    {showUserDropdown && (
-                                        <div className="absolute top-full right-0 mt-3 py-3 w-56 bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-500/30 overflow-hidden animate-slideDown">
-                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none"></div>
-                                            <button
-                                                onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
-                                                className="relative w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group"
-                                            >
-                                                <User className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
-                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Profile</span>
-                                            </button>
-                                            <button
-                                                onClick={handleLogout}
-                                                className="relative w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group"
-                                            >
-                                                <LogOut className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
-                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Logout</span>
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             ) : (
                                 <button
@@ -265,6 +226,64 @@ const Navbar = () => {    const navigate = useNavigate();
                                     <Menu className="h-6 w-6" />
                                 )}
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Desktop Dropdowns Section - Inside Navbar */}
+                <div className={`hidden md:block transition-all duration-300 overflow-hidden ${
+                    (openDropdown === 'Services' || showUserDropdown)
+                        ? 'max-h-64 opacity-100' 
+                        : 'max-h-0 opacity-0'
+                }`}>
+                    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+                        <div className="border-t border-white/10 pt-4">
+                            <div className="flex justify-center gap-8">
+                                {/* Services Dropdown Content */}
+                                {openDropdown === 'Services' && navItems.find(item => item.name === 'Services')?.subItems && (
+                                    <div className="py-3 px-6 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 animate-slideDown min-w-[240px]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none rounded-2xl"></div>
+                                        <div className="space-y-2 relative">
+                                            {navItems.find(item => item.name === 'Services').subItems.map((subItem, idx) => (
+                                                <button
+                                                    key={subItem.name}
+                                                    onClick={subItem.action}
+                                                    className="w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group rounded-xl"
+                                                    style={{
+                                                        animationDelay: `${idx * 50}ms`
+                                                    }}
+                                                >
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
+                                                    <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">{subItem.name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* User Dropdown Content */}
+                                {showUserDropdown && currentUser && (
+                                    <div className="py-3 px-6 bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-purple-500/30 animate-slideDown min-w-[240px]">
+                                        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none rounded-2xl"></div>
+                                        <div className="space-y-2 relative">
+                                            <button
+                                                onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
+                                                className="w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group rounded-xl"
+                                            >
+                                                <User className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
+                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Profile</span>
+                                            </button>
+                                            <button
+                                                onClick={handleLogout}
+                                                className="w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group rounded-xl"
+                                            >
+                                                <LogOut className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
+                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Logout</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
