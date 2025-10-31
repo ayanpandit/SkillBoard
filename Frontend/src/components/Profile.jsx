@@ -441,8 +441,17 @@ const Profile = () => {
 
               <div className="space-y-3">
                 <button 
-                  onClick={() => {
-                    window.open(popupFile.url, '_blank');
+                  onClick={async () => {
+                    try {
+                      if (!popupFile?.url || popupFile.url === '#') {
+                        setMessage('Error: File URL is not available');
+                        return;
+                      }
+                      window.open(popupFile.url, '_blank', 'noopener,noreferrer');
+                    } catch (error) {
+                      console.error('Error opening file:', error);
+                      setMessage('Error opening file');
+                    }
                   }}
                   className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-blue-500/50 transform hover:scale-[1.02]"
                 >
@@ -453,26 +462,59 @@ const Profile = () => {
                   View File
                 </button>
                 
-                <a 
-                  href={popupFile.url} 
-                  download
+                <button
+                  onClick={async () => {
+                    try {
+                      if (!popupFile?.url || popupFile.url === '#') {
+                        setMessage('Error: File URL is not available');
+                        return;
+                      }
+                      
+                      // Fetch the file and trigger download
+                      const response = await fetch(popupFile.url);
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = popupFile.name;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(url);
+                      setMessage('File downloaded successfully!');
+                    } catch (error) {
+                      console.error('Error downloading file:', error);
+                      setMessage('Error downloading file. Trying alternative method...');
+                      // Fallback: open in new tab
+                      window.open(popupFile.url, '_blank');
+                    }
+                  }}
                   className="w-full py-3 px-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-green-500/50 transform hover:scale-[1.02]"
                 >
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
                   Download
-                </a>
+                </button>
 
                 <button 
                   onClick={() => {
-                    navigate('/codechefloder', { 
-                      state: { 
-                        fileUrl: popupFile.url, 
-                        fileName: popupFile.name 
-                      } 
-                    });
-                    setShowPopup(false);
+                    try {
+                      if (!popupFile?.url || popupFile.url === '#') {
+                        setMessage('Error: File URL is not available');
+                        return;
+                      }
+                      navigate('/codechefloder', { 
+                        state: { 
+                          fileUrl: popupFile.url, 
+                          fileName: popupFile.name 
+                        } 
+                      });
+                      setShowPopup(false);
+                    } catch (error) {
+                      console.error('Error navigating to CodeChef analyzer:', error);
+                      setMessage('Error opening CodeChef analyzer');
+                    }
                   }}
                   className="w-full py-3 px-4 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-orange-500/50 transform hover:scale-[1.02]"
                 >
@@ -484,8 +526,22 @@ const Profile = () => {
                 
                 <button 
                   onClick={() => {
-                    navigate('/leetcodeloder', { state: { fileUrl: popupFile.url, fileName: popupFile.name } });
-                    setShowPopup(false);
+                    try {
+                      if (!popupFile?.url || popupFile.url === '#') {
+                        setMessage('Error: File URL is not available');
+                        return;
+                      }
+                      navigate('/leetcodeloder', { 
+                        state: { 
+                          fileUrl: popupFile.url, 
+                          fileName: popupFile.name 
+                        } 
+                      });
+                      setShowPopup(false);
+                    } catch (error) {
+                      console.error('Error navigating to LeetCode analyzer:', error);
+                      setMessage('Error opening LeetCode analyzer');
+                    }
                   }}
                   className="w-full py-3 px-4 bg-gradient-to-r from-yellow-600 to-yellow-700 text-white rounded-lg hover:from-yellow-700 hover:to-yellow-800 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-yellow-500/50 transform hover:scale-[1.02]"
                 >

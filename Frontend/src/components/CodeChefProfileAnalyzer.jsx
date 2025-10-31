@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -46,7 +46,7 @@ const Section = ({ title, children, icon, defaultOpen = false }) => {
 
 // --- Main Component ---
 
-function CodeChefProfileAnalyzer() {
+function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
   const [usernameInput, setUsernameInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,6 +60,61 @@ function CodeChefProfileAnalyzer() {
   const [sortConfig, setSortConfig] = useState({ key: 'sno', direction: 'ascending' });
   const [filterUsername, setFilterUsername] = useState('');
   const [filterName, setFilterName] = useState('');
+
+  // Auto-load file from Profile page
+  useEffect(() => {
+    const loadFileFromUrl = async () => {
+      if (!initialFileUrl || !initialFileName) {
+        console.log('No initial file to load');
+        return;
+      }
+
+      console.log('Loading file from URL:', initialFileUrl, initialFileName);
+      setIsLoading(true);
+      setError('');
+
+      try {
+        // Fetch the file from the URL
+        const response = await fetch(initialFileUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.statusText}`);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const data = new Uint8Array(arrayBuffer);
+        
+        // Parse the file
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        
+        // Extract usernames
+        const usernames = jsonData
+          .flat()
+          .map(val => String(val).trim())
+          .filter(val => val && val.toLowerCase() !== 'username');
+        
+        console.log('Extracted usernames:', usernames.length);
+        
+        if (usernames.length === 0) {
+          setError('No valid usernames found in the file');
+          setIsLoading(false);
+          return;
+        }
+
+        // Process the usernames
+        setLastSearchedUsernames(usernames);
+        await processUsernames(usernames);
+        
+      } catch (err) {
+        console.error('Error loading file from URL:', err);
+        setError(`Failed to load file: ${err.message}`);
+        setIsLoading(false);
+      }
+    };
+
+    loadFileFromUrl();
+  }, [initialFileUrl, initialFileName]); // Only run when these props change
 
   // Helper to safely get nested values
   const getNestedValue = (obj, path, defaultValue = 'N/A') => {
