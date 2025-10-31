@@ -8,9 +8,9 @@ import {
   Download, Filter, RotateCcw
 } from 'lucide-react';
 
-// CodeForces API endpoints - single URL for both dev and production
-const API_URL = import.meta.env.VITE_CODEFORCES_API_URL;
-const API_BULK_URL = import.meta.env.VITE_CODEFORCES_API_BULK_URL;
+// CodeForces API endpoints - now using local backend server
+const API_URL = import.meta.env.VITE_CODEFORCES_API_URL || 'http://localhost:3002/api/codeforces';
+const API_BULK_URL = import.meta.env.VITE_CODEFORCES_API_BULK_URL || 'http://localhost:3002/api/codeforces/bulk';
 
 const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   // State management
@@ -168,16 +168,13 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   // Table columns configuration
   const tableColumns = useMemo(() => [
     { key: 'sno', label: 'S.No.', sortable: false },
-    { key: 'name', label: 'Name', sortable: true, getValue: user => `${getNestedValue(user, 'firstName', '')} ${getNestedValue(user, 'lastName', '')}`.trim().toLowerCase() || 'z' },
     { key: 'username', label: 'Username', sortable: true, getValue: user => user.username?.toLowerCase() || '' },
+    { key: 'name', label: 'Name', sortable: true, getValue: user => `${getNestedValue(user, 'firstName', '')} ${getNestedValue(user, 'lastName', '')}`.trim().toLowerCase() || 'z' },
+    { key: 'rank', label: 'Rank', sortable: true, getValue: user => getNestedValue(user, 'rank', 'Unrated') },
     { key: 'rating', label: 'Rating', sortable: true, getValue: user => getNestedValue(user, 'rating', 0) },
-    { key: 'stars', label: 'Stars', sortable: true, getValue: user => getNestedValue(user, 'stars', 0) },
+    { key: 'maxRating', label: 'Max Rating', sortable: true, getValue: user => getNestedValue(user, 'maxRating', 0) },
     { key: 'problemsSolved', label: 'Problems Solved', sortable: true, getValue: user => getNestedValue(user, 'problemsSolved', 0) },
-    { key: 'globalRank', label: 'Global Rank', sortable: true, getValue: user => {
-      const rank = getNestedValue(user, 'globalRank', 'N/A');
-      return rank === 'N/A' ? Infinity : parseInt(String(rank).replace(/,/g, ''));
-    }},
-    { key: 'contestsParticipated', label: 'Contests Participated', sortable: true, getValue: user => getNestedValue(user, 'contestsParticipated', 0) },
+    { key: 'contestsParticipated', label: 'Contests', sortable: true, getValue: user => getNestedValue(user, 'contestsParticipated', 0) },
     { key: 'status', label: 'Status', sortable: true, getValue: user => user.error ? 0 : 1 },
   ], []);
 
