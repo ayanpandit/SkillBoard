@@ -623,7 +623,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
               onChange={(e) => setUsernameInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSingleSearch()}
               placeholder="Enter CodeChef Username"
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
           </div>
@@ -700,7 +700,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-slate-700 rounded-full h-3 overflow-hidden shadow-inner">
+          <div className="w-full bg-slate-700/50 backdrop-blur-sm rounded-full h-3 overflow-hidden shadow-inner border border-slate-600/30">
             <div
               className="bg-gradient-to-r from-orange-500 to-pink-500 h-3 rounded-full transition-all duration-300 ease-out shadow-lg"
               style={{ width: `${totalToProcess > 0 ? (processingProgress / totalToProcess) * 100 : 0}%` }}
@@ -784,7 +784,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
                 {processedResults.map((user, index) => (
                   <tr
                     key={user.username}
-                    className="bg-slate-800 border-b border-slate-700 hover:bg-slate-700/50 cursor-pointer transition-colors"
+                    className="bg-slate-800/20 backdrop-blur-sm border-b border-slate-700/50 hover:bg-slate-700/40 cursor-pointer transition-colors"
                     onClick={() => setSelectedUser(user)}
                   >
                     <td className="px-5 py-4 font-medium">{index + 1}</td>
