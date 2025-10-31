@@ -95,10 +95,29 @@ Create `.env` files in both frontend and backend directories:
 
 **Frontend (.env)**
 ```env
-VITE_API_URL_PROD=https://your-production-api.com
-VITE_API_URL_DEV=http://localhost:3000
-VITE_API_BULK_URL_PROD=https://your-production-api.com/bulk
-VITE_API_BULK_URL_DEV=http://localhost:3000/bulk
+# LeetCode API
+VITE_API_URL=https://your-leetcode-backend.onrender.com/api/leetcode
+VITE_API_BULK_URL=https://your-leetcode-backend.onrender.com/api/leetcode/bulk
+
+# CodeChef API
+VITE_CODECHEF_API_URL=https://your-codechef-backend.onrender.com/api/codechef
+
+# CodeChef Bulk Search - Multiple API Endpoints
+VITE_CODECHEF_API_URL_1=https://your-codechef-backend.onrender.com/api/codechef
+VITE_CODECHEF_API_URL_2=https://your-codechef-backend-1.onrender.com/api/codechef
+VITE_CODECHEF_API_URL_3=https://your-codechef-backend-2.onrender.com/api/codechef
+VITE_CODECHEF_API_URL_4=https://your-codechef-backend-3.onrender.com/api/codechef
+VITE_CODECHEF_API_URL_5=https://your-codechef-backend-4.onrender.com/api/codechef
+VITE_CODECHEF_API_URL_6=https://your-codechef-backend-5.onrender.com/api/codechef
+
+# CodeForces API
+VITE_CODEFORCES_API_URL=https://your-codeforces-backend.onrender.com/api/codeforces
+VITE_CODEFORCES_API_BULK_URL=https://your-codeforces-backend.onrender.com/api/codeforces/bulk
+
+# Supabase Configuration
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key-here
+VITE_SUPABASE_SITE_URL=https://your-production-url.com
 ```
 
 **Backend (.env)**
@@ -108,13 +127,14 @@ PORT=3000
 CORS_ORIGIN=http://localhost:5173
 ```
 
-5. **Supabase Configuration**
+> **Note**: A `.env.example` file is provided in the Frontend directory. Copy it to `.env` and fill in your actual values.
 
-Update `Frontend/src/supabaseClient.js` with your Supabase credentials:
-```javascript
-const supabaseUrl = 'your-supabase-url'
-const supabaseAnonKey = 'your-supabase-anon-key'
-```
+5. **Configure Supabase**
+
+The application uses environment variables for Supabase configuration. Make sure to set:
+- `VITE_SUPABASE_URL`: Your Supabase project URL
+- `VITE_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+- `VITE_SUPABASE_SITE_URL`: Your production URL for email redirects
 
 ### 🏃‍♂️ Running the Application
 

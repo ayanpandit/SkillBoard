@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       ...data,
       options: {
         ...data.options,
-        emailRedirectTo: 'https://skillboard-nit5.onrender.com'
+        emailRedirectTo: import.meta.env.VITE_SUPABASE_SITE_URL || window.location.origin
       }
     });
   };
@@ -61,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: 'https://skillboard-nit5.onrender.com'
+        emailRedirectTo: import.meta.env.VITE_SUPABASE_SITE_URL || window.location.origin
       }
     });
     

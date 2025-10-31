@@ -54,7 +54,7 @@ const LoginSignup = ({ onClose }) => {
             data: {
               full_name: fullName
             },
-            emailRedirectTo: 'https://skillboard-nit5.onrender.com'
+            emailRedirectTo: import.meta.env.VITE_SUPABASE_SITE_URL || window.location.origin
           }
         });
 
