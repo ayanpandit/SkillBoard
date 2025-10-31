@@ -64,6 +64,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
   const [startTime, setStartTime] = useState(null);
 
   // Cheat detection function - detects suspicious rating drops
+  // NOTE: Contest history is in reverse chronological order (newest first, oldest last)
   const detectCheating = useCallback((contestHistory) => {
     if (!Array.isArray(contestHistory) || contestHistory.length < 2) {
       return { suspiciousContests: [], cheatCount: 0 };
@@ -72,18 +73,19 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
     const suspiciousContests = [];
     const RATING_DROP_THRESHOLD = 200; // Suspicious if rating drops by 200+ points
 
-    for (let i = 1; i < contestHistory.length; i++) {
-      const prevRating = parseInt(contestHistory[i - 1].rating) || 0;
+    // Since newest contests are first, we compare current with next (older) contest
+    for (let i = 0; i < contestHistory.length - 1; i++) {
       const currentRating = parseInt(contestHistory[i].rating) || 0;
-      const ratingDrop = prevRating - currentRating;
+      const olderRating = parseInt(contestHistory[i + 1].rating) || 0;
+      const ratingDrop = olderRating - currentRating; // Older rating - current rating
 
-      // If there's a significant rating drop, mark as suspicious
+      // If older rating was much higher, current contest shows a suspicious drop
       if (ratingDrop >= RATING_DROP_THRESHOLD) {
         suspiciousContests.push({
           ...contestHistory[i],
           index: i,
           ratingDrop: ratingDrop,
-          previousRating: prevRating
+          previousRating: olderRating
         });
       }
     }
@@ -524,9 +526,10 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
                   {user.contest_history.map((contest, idx) => {
                     const isSuspicious = user.suspiciousContests?.some(s => s.index === idx);
                     const suspiciousData = user.suspiciousContests?.find(s => s.index === idx);
-                    const prevRating = idx > 0 ? user.contest_history[idx - 1].rating : contest.rating;
-                    const ratingChange = parseInt(contest.rating) - parseInt(prevRating);
-                    const ratingChangeText = idx === 0 ? '-' : (ratingChange > 0 ? `+${ratingChange}` : ratingChange);
+                    // Since contests are newest first, next index is older
+                    const olderRating = idx < user.contest_history.length - 1 ? user.contest_history[idx + 1].rating : contest.rating;
+                    const ratingChange = parseInt(contest.rating) - parseInt(olderRating);
+                    const ratingChangeText = idx === user.contest_history.length - 1 ? '-' : (ratingChange > 0 ? `+${ratingChange}` : ratingChange);
                     
                     return (
                       <tr 
