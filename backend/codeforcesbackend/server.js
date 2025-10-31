@@ -5,10 +5,16 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 10000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://skillboard-nit5.onrender.com', 'https://skillboard.vercel.app', 'https://skillboard.netlify.app']
+    : '*',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
 app.use(express.json());
 
 // CodeForces API Configuration
@@ -329,7 +335,7 @@ app.get('/', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 CodeForces API server running on port ${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔑 API Key configured: ${API_KEY ? 'Yes' : 'No'}`);
@@ -340,5 +346,14 @@ process.on('SIGTERM', () => {
   console.log('SIGTERM signal received: closing HTTP server');
   server.close(() => {
     console.log('HTTP server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
   });
 });

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: codeforces-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CODEFORCES_API_KEY
+        sync: false
+      - key: CODEFORCES_API_SECRET
+        sync: false

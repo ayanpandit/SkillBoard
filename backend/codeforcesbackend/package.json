@@ -1,7 +1,7 @@
 {
   "name": "codeforces-api",
   "version": "1.0.0",
-  "description": "CodeForces API backend with authentication",
+  "description": "CodeForces API backend with official API authentication for SkillBoard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,7 +11,8 @@
   "keywords": [
     "codeforces",
     "api",
-    "competitive-programming"
+    "competitive-programming",
+    "profile-analyzer"
   ],
   "author": "Ayan Pandey",
   "license": "MIT",
@@ -19,10 +20,10 @@
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "axios": "^1.6.0",
-    "crypto": "^1.0.1",
     "dotenv": "^16.3.1"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   }
 }
