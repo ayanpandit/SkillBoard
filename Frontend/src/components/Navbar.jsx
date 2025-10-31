@@ -191,14 +191,19 @@ const Navbar = () => {    const navigate = useNavigate();
                                     
                                     {/* Desktop Dropdown Menu */}
                                     {item.isDropdown && openDropdown === item.name && (
-                                        <div className="absolute top-full left-0 mt-2 py-2 w-48 bg-slate-800 rounded-xl shadow-xl border border-slate-700/50">
-                                            {item.subItems.map((subItem) => (
+                                        <div className="absolute top-full left-0 mt-3 py-3 w-56 bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-500/30 overflow-hidden animate-slideDown">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none"></div>
+                                            {item.subItems.map((subItem, idx) => (
                                                 <button
                                                     key={subItem.name}
                                                     onClick={subItem.action}
-                                                    className="w-full px-4 py-2 text-left text-white hover:bg-slate-700/50 transition-colors duration-200 flex items-center space-x-2"
+                                                    className="relative w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group"
+                                                    style={{
+                                                        animationDelay: `${idx * 50}ms`
+                                                    }}
                                                 >
-                                                    <span>{subItem.name}</span>
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
+                                                    <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">{subItem.name}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -219,20 +224,21 @@ const Navbar = () => {    const navigate = useNavigate();
                                         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showUserDropdown ? 'rotate-180' : ''}`} />
                                     </button>
                                     {showUserDropdown && (
-                                        <div className="absolute top-full right-0 mt-2 py-2 w-48 bg-slate-800 rounded-xl shadow-xl border border-slate-700/50 z-50">
+                                        <div className="absolute top-full right-0 mt-3 py-3 w-56 bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-500/30 overflow-hidden animate-slideDown">
+                                            <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-pink-600/10 pointer-events-none"></div>
                                             <button
                                                 onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
-                                                className="w-full px-4 py-2 text-left text-white hover:bg-slate-700/50 transition-colors duration-200 flex items-center space-x-2"
+                                                className="relative w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group"
                                             >
-                                                <User className="w-4 h-4" />
-                                                <span>Profile</span>
+                                                <User className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
+                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Profile</span>
                                             </button>
                                             <button
                                                 onClick={handleLogout}
-                                                className="w-full px-4 py-2 text-left text-white hover:bg-slate-700/50 transition-colors duration-200 flex items-center space-x-2"
+                                                className="relative w-full px-5 py-3 text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-3 group"
                                             >
-                                                <LogOut className="w-4 h-4" />
-                                                <span>Logout</span>
+                                                <LogOut className="w-5 h-5 text-purple-400 group-hover:text-pink-400 group-hover:scale-110 transition-all duration-300" />
+                                                <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">Logout</span>
                                             </button>
                                         </div>
                                     )}
@@ -291,7 +297,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                             </button>
                                             
                                             {/* Mobile Dropdown Menu */}
-                                            <div className={`pl-12 mt-2 space-y-2 transition-all duration-300 ${openDropdown === item.name ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+                                            <div className={`pl-8 mt-2 space-y-1 transition-all duration-300 ${openDropdown === item.name ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
                                                 {item.subItems.map((subItem) => (
                                                     <button
                                                         key={subItem.name}
@@ -302,9 +308,10 @@ const Navbar = () => {    const navigate = useNavigate();
                                                                 handleAnalyzerNavigation(subItem.action()); // Using handleAnalyzerNavigation
                                                             }, 100);
                                                         }}
-                                                        className="w-full px-4 py-2 rounded-lg text-left text-white hover:bg-white/10 transition-colors duration-200"
+                                                        className="w-full px-4 py-2.5 rounded-xl text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-2 group"
                                                     >
-                                                        {subItem.name}
+                                                        <div className="w-1 h-1 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
+                                                        <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">{subItem.name}</span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -383,6 +390,21 @@ const Navbar = () => {    const navigate = useNavigate();
                         opacity: 1;
                         transform: translateX(0);
                     }
+                }
+                
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                
+                .animate-slideDown {
+                    animation: slideDown 0.2s ease-out forwards;
                 }
             `}</style>
             </nav>
