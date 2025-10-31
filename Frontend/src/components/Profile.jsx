@@ -202,7 +202,7 @@ const Profile = () => {
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center pt-20 px-4">
+      <div className="min-h-screen bg-black flex items-center justify-center pt-20 px-4">
         <div className="text-center bg-gray-800/50 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-gray-700">
           <p className="text-gray-300 text-lg">Please log in to view your profile.</p>
         </div>
@@ -211,7 +211,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-black text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         {/* Header Section */}
         <div className="text-center mb-8">

@@ -79,7 +79,7 @@ const AppWrapper = () => {
   }, [location, navigate]);
 
   return (
-    <div className={`App ${isAnalyzerPage ? 'bg-[rgb(15,22,41)]' : 'bg-gray-900'}`}>
+    <div className={`App ${isAnalyzerPage ? 'bg-black' : 'bg-black'}`}>
       <Navbar />
       <SEO />
       <Routes>

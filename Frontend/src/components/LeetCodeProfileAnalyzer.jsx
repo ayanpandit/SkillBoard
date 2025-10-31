@@ -1174,7 +1174,7 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
   }, [initialFileUrl, initialFileName]);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200 p-4 md:p-8 font-sans">
+    <div className="min-h-screen bg-black text-slate-200 p-4 md:p-8 font-sans">
       <style jsx global>{`.pretty-scrollbar::-webkit-scrollbar {width:6px;height:6px;} .pretty-scrollbar::-webkit-scrollbar-track {background:transparent;} .pretty-scrollbar::-webkit-scrollbar-thumb {background:#475569;border-radius:10px;} .pretty-scrollbar::-webkit-scrollbar-thumb:hover {background:#334155;}`}</style>      <header className="text-center mb-8 pt-24">
         <h1 className="text-4xl md:text-5xl font-bold text-sky-400">LeetCode Profile Analyzer</h1>
       </header>

@@ -30,7 +30,7 @@ const AuthRedirect = () => {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
       <div className="animate-pulse">
         <h2 className="text-2xl font-bold mb-4">Processing your authentication...</h2>
         <p>You'll be redirected shortly.</p>

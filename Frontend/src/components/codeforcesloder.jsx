@@ -41,7 +41,7 @@ export default function CodeForcesLoder() {
     // Show loader first, then analyzer
     if (showLoader) {
         return (
-            <div className={`min-h-screen bg-slate-900 text-slate-300 flex flex-col justify-center items-center transition-all duration-500 ${
+            <div className={`min-h-screen bg-black text-slate-300 flex flex-col justify-center items-center transition-all duration-500 ${
                 fadeOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
             }`}>
                 <PulsatingLoader text="Initializing CodeForces Analyzer..." />

@@ -327,7 +327,7 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   };
 
   return (
-    <div className="bg-slate-900 text-slate-300 min-h-screen pb-12">
+    <div className="bg-black text-slate-300 min-h-screen pb-12">
       <div className="container mx-auto px-4 py-8 mt-40">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold text-white">Codeforces Profile Analyzer</h2>
