@@ -14,7 +14,7 @@ const API_URL = import.meta.env.VITE_CODECHEF_API_URL;
 // --- Reusable UI Components ---
 
 const StatCard = ({ title, value, icon, color = "text-orange-400" }) => (
-  <div className="bg-slate-800 p-4 rounded-lg shadow-md flex items-center">
+  <div className="bg-slate-800/40 backdrop-blur-sm p-4 rounded-lg shadow-md flex items-center border border-slate-700/50">
     {React.createElement(icon, { className: `w-8 h-8 mr-3 ${color}` })}
     <div>
       <p className="text-sm text-slate-400">{title}</p>
@@ -28,7 +28,7 @@ const StatCard = ({ title, value, icon, color = "text-orange-400" }) => (
 const Section = ({ title, children, icon, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="mb-6 bg-slate-800 rounded-lg shadow-md">
+    <div className="mb-6 bg-slate-800/40 backdrop-blur-sm rounded-lg shadow-md border border-slate-700/50">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex justify-between items-center p-4 text-left text-slate-100 hover:bg-slate-700/70 rounded-t-lg transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -591,13 +591,30 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
         .pretty-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
       `}</style>
       
-      <header className="text-center mb-8 pt-24">
+      <header className="text-center mb-6 pt-24">
         <h1 className="text-4xl md:text-5xl font-bold text-orange-400">CodeChef Profile Analyzer</h1>
         <p className="text-slate-400 mt-2">Analyze CodeChef profiles with detailed insights</p>
       </header>
 
+      {/* Permanent Info Box */}
+      <div className="max-w-3xl mx-auto mb-8 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg backdrop-blur-sm">
+        <div className="flex items-start">
+          <AlertCircle size={20} className="text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-slate-300">
+            <p className="font-semibold text-blue-300 mb-2">⏱️ Why does scraping take time?</p>
+            <p className="mb-2">We're carefully scraping data from CodeChef to <strong>avoid rate limits</strong> and prevent getting blocked. 
+            We use <strong className="text-orange-400">safe delays (4.5-6 seconds)</strong> between requests with <strong className="text-purple-400">2 parallel workers</strong> 
+            to ensure reliable data fetching.</p>
+            <p className="text-blue-200">
+              💡 <strong>Pro Tip:</strong> For best results with <strong>bulk uploads (50+ users)</strong>, expect minimal failures! 
+              Smaller batches may have higher retry rates. Your patience ensures <strong className="text-green-400">100% success rate!</strong> 🎯
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Search Section */}
-      <div className="max-w-xl mx-auto mb-8 p-6 bg-slate-800 rounded-xl shadow-2xl">
+      <div className="max-w-xl mx-auto mb-8 p-6 bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-700/50">
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-grow">
             <input
@@ -654,7 +671,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
 
       {/* Loading Progress */}
       {isLoading && totalToProcess > 0 && (
-        <div className="my-6 mx-auto max-w-2xl bg-slate-800 rounded-xl p-6 shadow-xl">
+        <div className="my-6 mx-auto max-w-2xl bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 shadow-xl border border-slate-700/50">
           <div className="flex items-center justify-center mb-4">
             <Loader2 className="animate-spin w-8 h-8 text-orange-400 mr-3" />
             <h3 className="text-xl font-semibold text-slate-100">Processing Profiles...</h3>
@@ -696,14 +713,13 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
           </div>
 
           {/* Info Message */}
-          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg backdrop-blur-sm">
             <div className="flex items-start">
               <AlertCircle size={18} className="text-blue-400 mr-2 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-slate-300">
-                <p className="font-semibold text-blue-300 mb-1">Why is this taking time?</p>
-                <p>We're carefully scraping data from CodeChef to avoid rate limits and prevent getting blocked. 
-                We use <strong>safe delays (4.5-6 seconds)</strong> between requests with <strong>2 parallel workers</strong> 
-                to ensure reliable data fetching. Your patience ensures 100% success rate! 🎯</p>
+                <p className="font-semibold text-blue-300 mb-1">Processing your request...</p>
+                <p>Using optimized scraping with safe delays to ensure reliable data fetching. 
+                Each profile is being carefully analyzed for accuracy! ✨</p>
               </div>
             </div>
           </div>
@@ -722,8 +738,8 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
 
       {/* Results Table */}
       {searchResults.length > 0 && (
-        <div className="mt-10 max-w-7xl mx-auto bg-slate-800 rounded-xl shadow-2xl overflow-hidden">
-          <div className="p-5 border-b border-slate-700 flex flex-wrap gap-4 items-center justify-between">
+        <div className="mt-10 max-w-7xl mx-auto bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-2xl overflow-hidden border border-slate-700/50">
+          <div className="p-5 border-b border-slate-700/50 flex flex-wrap gap-4 items-center justify-between">
             <h2 className="text-2xl font-semibold text-slate-100">
               Search Results ({processedResults.length})
               {isLoading && <span className="text-sm text-orange-400 ml-2">(Loading more...)</span>}
@@ -736,20 +752,20 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
             </button>
           </div>
 
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-700">
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-700/50">
             <input
               type="text"
               placeholder="Filter by Username..."
               value={filterUsername}
               onChange={e => setFilterUsername(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+              className="px-3 py-2 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-1 focus:ring-orange-500 outline-none text-sm"
             />
             <input
               type="text"
               placeholder="Filter by Name..."
               value={filterName}
               onChange={e => setFilterName(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-orange-500 outline-none text-sm"
+              className="px-3 py-2 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-1 focus:ring-orange-500 outline-none text-sm"
             />
           </div>
 
@@ -838,7 +854,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
           onClick={() => setSelectedUser(null)}
         >
           <div
-            className="bg-slate-850 text-slate-200 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-slate-700 pretty-scrollbar"
+            className="bg-slate-800/60 backdrop-blur-md text-slate-200 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-slate-700/70 pretty-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <button
