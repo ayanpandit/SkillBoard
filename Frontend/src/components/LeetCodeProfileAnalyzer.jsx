@@ -16,7 +16,7 @@ const API_BULK_URL = import.meta.env.VITE_API_BULK_URL;
 
 // StatCard, Section, getDifficultyColorText, getDifficultyColorBg components remain the same
 const StatCard = ({ title, value, icon, color = "text-sky-400" }) => (
-  <div className="bg-slate-800 p-4 rounded-lg shadow-md flex items-center">
+  <div className="bg-slate-800/40 backdrop-blur-sm p-4 rounded-lg shadow-md flex items-center border border-slate-700/50">
     {React.createElement(icon, { className: `w-8 h-8 mr-3 ${color}` })}
     <div>
       <p className="text-sm text-slate-400">{title}</p>
@@ -28,7 +28,7 @@ const StatCard = ({ title, value, icon, color = "text-sky-400" }) => (
 const Section = ({ title, children, icon, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="mb-6 bg-slate-800 rounded-lg shadow-md">
+    <div className="mb-6 bg-slate-800/40 backdrop-blur-sm rounded-lg shadow-md border border-slate-700/50">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex justify-between items-center p-4 text-left text-slate-100 hover:bg-slate-700/70 rounded-t-lg transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -1178,10 +1178,10 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
       <style jsx global>{`.pretty-scrollbar::-webkit-scrollbar {width:6px;height:6px;} .pretty-scrollbar::-webkit-scrollbar-track {background:transparent;} .pretty-scrollbar::-webkit-scrollbar-thumb {background:#475569;border-radius:10px;} .pretty-scrollbar::-webkit-scrollbar-thumb:hover {background:#334155;}`}</style>      <header className="text-center mb-8 pt-24">
         <h1 className="text-4xl md:text-5xl font-bold text-sky-400">LeetCode Profile Analyzer</h1>
       </header>
-      <div className="max-w-xl mx-auto mb-8 p-6 bg-slate-800 rounded-xl shadow-2xl">
+      <div className="max-w-xl mx-auto mb-8 p-6 bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-2xl border border-slate-700/50">
         <div className="flex flex-col sm:flex-row gap-3 mb-4">
           <div className="relative flex-grow">
-            <input type="text" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSingleSearch()} placeholder="Enter LeetCode Username" className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors" />
+            <input type="text" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSingleSearch()} placeholder="Enter LeetCode Username" className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors" />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
           </div>
           <button onClick={handleSingleSearch} disabled={isLoading || !usernameInput.trim()} className="bg-sky-600 hover:bg-sky-500 text-white font-semibold px-6 py-2.5 rounded-lg flex items-center justify-center transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-800">
@@ -1206,27 +1206,27 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
           <p className="text-lg">
             {totalToProcess > 1 ? `Processing ${totalToProcess} users... (This may take a moment)` : `Processing ${processingProgress} of ${totalToProcess} users...`}
           </p>
-          <div className="w-full max-w-md mx-auto bg-slate-700 rounded-full h-2.5 mt-2 overflow-hidden">
+          <div className="w-full max-w-md mx-auto bg-slate-700/50 backdrop-blur-sm rounded-full h-2.5 mt-2 overflow-hidden border border-slate-600/30">
             <div className="bg-sky-500 h-2.5 rounded-full transition-all duration-300 ease-linear" style={{ width: `${totalToProcess > 0 ? (processingProgress / totalToProcess) * 100 : 0}%` }}></div>
           </div>
         </div>
       )}
 
       {searchResults.length > 0 && !isLoading && (
-        <div className="mt-10 max-w-7xl mx-auto bg-slate-800 rounded-xl shadow-2xl overflow-hidden">
-          <div className="p-5 border-b border-slate-700 flex flex-wrap gap-4 items-center justify-between">
+        <div className="mt-10 max-w-7xl mx-auto bg-slate-800/40 backdrop-blur-sm rounded-xl shadow-2xl overflow-hidden border border-slate-700/50">
+          <div className="p-5 border-b border-slate-700/50 flex flex-wrap gap-4 items-center justify-between">
             <h2 className="text-2xl font-semibold text-slate-100">Search Results ({processedResults.length})</h2>
             <button onClick={handleDownloadTable} className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors text-sm">
               <Download size={18} className="mr-2" /> Download Table
             </button>
           </div>
-          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-700">
-            <input type="text" placeholder="Filter by Username..." value={filterUsername} onChange={e => setFilterUsername(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
-            <input type="text" placeholder="Filter by Real Name..." value={filterRealName} onChange={e => setFilterRealName(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
-            <input type="text" placeholder="Weekly Contest No." value={weeklyContestQuery} onChange={e => setWeeklyContestQuery(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
-            <input type="text" placeholder="Biweekly Contest No." value={biweeklyContestQuery} onChange={e => setBiweeklyContestQuery(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700 text-slate-100 placeholder-slate-400 border border-slate-600 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 border-b border-slate-700/50">
+            <input type="text" placeholder="Filter by Username..." value={filterUsername} onChange={e => setFilterUsername(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
+            <input type="text" placeholder="Filter by Real Name..." value={filterRealName} onChange={e => setFilterRealName(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
+            <input type="text" placeholder="Weekly Contest No." value={weeklyContestQuery} onChange={e => setWeeklyContestQuery(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
+            <input type="text" placeholder="Biweekly Contest No." value={biweeklyContestQuery} onChange={e => setBiweeklyContestQuery(e.target.value)} className="px-3 py-2 rounded-lg bg-slate-700/50 backdrop-blur-sm text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-1 focus:ring-sky-500 outline-none text-sm" />
           </div>
-          <div className="p-4 flex flex-wrap gap-3 border-b border-slate-700">
+          <div className="p-4 flex flex-wrap gap-3 border-b border-slate-700/50">
             <button onClick={handleApplyContestHighlights} disabled={!weeklyContestQuery.trim() && !biweeklyContestQuery.trim()} className="bg-purple-600 hover:bg-purple-500 text-white font-semibold px-4 py-2 rounded-lg flex items-center transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
               <Filter size={18} className="mr-2" /> Apply Contest Highlights
             </button>
@@ -1296,7 +1296,7 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
                     <tr
                       key={user.username + index} // Make key more unique if usernames can repeat from different sources
                       onClick={() => { setSelectedUser(user); setSelectedHeatmapYear(new Date().getFullYear()); }}
-                      className={`border-b border-slate-700 cursor-pointer transition-colors ${contestRowClass || baseErrorClass || 'hover:bg-slate-700/70'}`}
+                      className={`bg-slate-800/20 backdrop-blur-sm border-b border-slate-700/50 cursor-pointer transition-colors ${contestRowClass || baseErrorClass || 'hover:bg-slate-700/70'}`}
                     >                      <td className="px-5 py-4">{index + 1}</td>
                       <td className="px-5 py-4 font-medium text-sky-400 break-all">{user.username}</td>
                       <td className="px-5 py-4">{getNestedValue(user, 'profile.realName')}</td>
@@ -1327,7 +1327,7 @@ function LeetCodeProfileAnalyzer({ initialFileUrl, initialFileName }) {
       )}
 
       {selectedUser && (<div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100]" onClick={(e) => { if (e.target === e.currentTarget) setSelectedUser(null); }}>
-        <div className="bg-slate-850 text-slate-200 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-slate-700 pretty-scrollbar" onClick={(e) => e.stopPropagation()}>
+        <div className="bg-slate-800/60 backdrop-blur-md text-slate-200 p-5 sm:p-6 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative border border-slate-700/70 pretty-scrollbar" onClick={(e) => e.stopPropagation()}>
           <button onClick={() => setSelectedUser(null)} className="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-slate-100 transition-colors z-[110] p-1 rounded-full hover:bg-slate-700" aria-label="Close modal"><X size={24} /></button>
           <ModalContent user={selectedUser} />
         </div>
