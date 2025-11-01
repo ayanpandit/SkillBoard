@@ -6,7 +6,6 @@ import { useState } from 'react';
 import LoginSignup from './LoginSignup';
 import AdminLogin from './AdminLogin';
 import { useToast } from '../context/ToastContext';
-import '../global-font.css';
 
 const HomePage = () => {
     const navigate = useNavigate();

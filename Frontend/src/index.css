@@ -1,11 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Pompiere&family=Varela+Round&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* Reset all margins and paddings */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: 'Varela Round', sans-serif;
 }
 
 /* Make HTML and body take full viewport and prevent horizontal scroll */
@@ -15,7 +19,7 @@ html, body {
   overflow-x: hidden;   /* prevent horizontal scroll */
   overflow-y: auto;     /* allow vertical scroll when needed */
   background-color: #000000; /* ✅ replace with your desired background */
-  font-family: Arial, sans-serif; /* optional */
+  font-family: 'Varela Round', sans-serif;
 }
 
 /* Prevent margin collapse by giving body a little padding */

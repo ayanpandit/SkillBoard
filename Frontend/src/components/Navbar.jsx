@@ -4,7 +4,6 @@ import { Menu, X, Home, User, Phone, Briefcase, ChevronDown, LogOut, Shield } fr
 import LoginSignup from './LoginSignup';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext'; // Added import
-import '../global-font.css';
 
 const Navbar = () => {    const navigate = useNavigate();
     const location = useLocation();
