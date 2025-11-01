@@ -59,8 +59,13 @@ const Navbar = () => {    const navigate = useNavigate();
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
+            // Don't close if clicking on a service navigation button
+            if (event.target.closest('.service-nav-btn')) {
+                return;
+            }
             if (!event.target.closest('.dropdown-container')) {
                 setOpenDropdown('');
+                setShowUserDropdown(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
@@ -93,15 +98,33 @@ const Navbar = () => {    const navigate = useNavigate();
         }
     };
 
-    const handleAnalyzerNavigation = (route) => {
+    // Handle navigation to analyzer pages with authentication check
+    const handleServiceNavigation = (route) => {
+        console.log('🔍 Navigation clicked:', route);
+        console.log('👤 Current user:', currentUser);
+        console.log('👤 Is Admin:', isAdmin);
+        
         if (!currentUser) {
+            console.log('❌ No user logged in - showing login modal');
             showToast('Please sign in to access the analyzer', 'info');
             setShowLoginSignup(true);
             setOpenDropdown('');
+            setIsMenuOpen(false);
             return;
         }
+        
+        console.log('✅ User logged in - closing menus and navigating to:', route);
+        
+        // Close all dropdowns and menus first
         setOpenDropdown('');
-        navigate(route);
+        setIsMenuOpen(false);
+        setShowUserDropdown(false);
+        
+        // Small delay to ensure state updates, then navigate
+        setTimeout(() => {
+            console.log('🚀 Executing navigation to:', route);
+            navigate(route);
+        }, 100);
     };
 
     const navItems = [
@@ -247,8 +270,8 @@ const Navbar = () => {    const navigate = useNavigate();
                                     {navItems.find(item => item.name === 'Services').subItems.map((subItem, idx) => (
                                         <button
                                             key={subItem.name}
-                                            onClick={() => handleAnalyzerNavigation(subItem.route)}
-                                            className="px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-2 group relative"
+                                            onClick={() => handleServiceNavigation(subItem.route)}
+                                            className="service-nav-btn px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-2 group relative"
                                             style={{
                                                 animation: `fadeInUp 0.4s ease-out ${idx * 0.1}s both`
                                             }}
@@ -324,12 +347,8 @@ const Navbar = () => {    const navigate = useNavigate();
                                                 {item.subItems.map((subItem) => (
                                                     <button
                                                         key={subItem.name}
-                                                        onClick={() => {
-                                                            setIsMenuOpen(false);
-                                                            setOpenDropdown('');
-                                                            handleAnalyzerNavigation(subItem.route);
-                                                        }}
-                                                        className="w-full px-4 py-2.5 rounded-xl text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-2 group"
+                                                        onClick={() => handleServiceNavigation(subItem.route)}
+                                                        className="service-nav-btn w-full px-4 py-2.5 rounded-xl text-left text-slate-200 hover:text-white hover:bg-gradient-to-r hover:from-purple-600/20 hover:to-pink-600/20 transition-all duration-300 flex items-center space-x-2 group"
                                                     >
                                                         <div className="w-1 h-1 rounded-full bg-purple-400 group-hover:bg-pink-400 group-hover:scale-150 transition-all duration-300"></div>
                                                         <span className="font-medium group-hover:translate-x-1 transition-transform duration-300">{subItem.name}</span>
@@ -404,8 +423,10 @@ const Navbar = () => {    const navigate = useNavigate();
                         </div>
                     </div>
                 </div> {/* यह Mobile Navigation Menu वाले div का क्लोजिंग टैग है (`md:hidden...`) */}
+            </nav>
+            
             {/* Animation styles */}
-            <style jsx>{`
+            <style>{`
                 @keyframes slideInFromRight {
                     from {
                         opacity: 0;
@@ -441,7 +462,6 @@ const Navbar = () => {    const navigate = useNavigate();
                     animation: fadeIn 0.3s ease-out forwards;
                 }
             `}</style>
-            </nav>
             {showLoginSignup && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/50">
                     <LoginSignup onClose={handleCloseLoginSignup} />
