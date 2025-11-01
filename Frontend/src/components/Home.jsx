@@ -90,6 +90,29 @@ const HomePage = () => {
             available: true
         },
         {
+            id: 'github',
+            name: 'GitHub',
+            description: 'Analyze developer profiles, repositories, contributions, and coding activity',
+            logo: '🐙',
+            color: 'from-gray-700 to-gray-900',
+            bgColor: 'bg-gradient-to-br from-gray-50 to-slate-50',
+            borderColor: 'border-gray-300',
+            features: [
+                { icon: Code2, text: 'Repositories' },
+                { icon: Users, text: 'Contributions' },
+                { icon: Star, text: 'Stars & Followers' },
+                { icon: Trophy, text: 'Activity Graph'}
+            ],
+            stats: {
+                repos: 'Unlimited',
+                contributions: 'Full History',
+                users: '100M+',
+                difficulty: 'All Levels'
+            },
+            available: false,
+            comingSoon: true
+        },
+        {
             id: 'hackerrank',
             name: 'HackerRank',
             description: 'We are working hard to bring this amazing platform to you soon!',
@@ -127,6 +150,8 @@ const HomePage = () => {
             navigate('/leetcodeloder');
         } else if (platformId === 'codeforces') {
             navigate('/codeforcesloder');
+        } else if (platformId === 'github') {
+            showToast('GitHub analyzer is coming soon! Stay tuned 🐙', 'info');
         } else if (platformId === 'hackerrank') {
             showToast('HackerRank analyzer is coming soon! Stay tuned 🚀', 'info');
         }
