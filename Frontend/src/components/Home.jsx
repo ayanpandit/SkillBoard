@@ -188,7 +188,7 @@ const HomePage = () => {
                                 >
                                     <span className="relative z-10 flex items-center gap-2">
                                         <Shield className="w-6 h-6" />
-                                        Admin Access
+                                        Authorized Access
                                     </span>
                                     <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                 </button>

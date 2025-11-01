@@ -606,7 +606,7 @@ function CodeChefProfileAnalyzer({ initialFileUrl, initialFileName }) {
             We use <strong className="text-orange-400">safe delays (4.5-6 seconds)</strong> between requests with <strong className="text-purple-400">2 parallel workers</strong> 
             to ensure reliable data fetching.</p>
             <p className="text-blue-200">
-              💡 <strong>Pro Tip:</strong> For best results with <strong>bulk uploads (50+ users)</strong>, expect minimal failures! 
+              💡 <strong>Pro Tip:</strong> For best results with <strong>bulk uploads less than 50 users</strong>, expect minimal failures! 
               Smaller batches may have higher retry rates. Your patience ensures <strong className="text-green-400">100% success rate!</strong> 🎯
             </p>
           </div>
