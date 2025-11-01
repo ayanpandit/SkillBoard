@@ -59,8 +59,10 @@ const Navbar = () => {    const navigate = useNavigate();
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            // Don't close if clicking on a service navigation button
-            if (event.target.closest('.service-nav-btn')) {
+            // Don't close if clicking on a service navigation button or logout button
+            if (event.target.closest('.service-nav-btn') || 
+                event.target.closest('.logout-btn') ||
+                event.target.closest('.profile-btn')) {
                 return;
             }
             if (!event.target.closest('.dropdown-container')) {
@@ -87,14 +89,23 @@ const Navbar = () => {    const navigate = useNavigate();
     const handleCloseLoginSignup = () => {
         setShowLoginSignup(false);
     };    const handleLogout = async () => {
+        console.log('🚪 Logout clicked');
         try {
+            console.log('🔄 Attempting to sign out...');
             const { error } = await signOut();
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Logout error:', error);
+                throw error;
+            }
+            console.log('✅ Logout successful');
             setShowUserDropdown(false); // Close dropdown on logout
+            setOpenDropdown('');
+            setIsMenuOpen(false);
+            showToast('Logged out successfully', 'success');
             navigate('/'); // Redirect to home or login page
         } catch (error) {
-            console.error("Error signing out: ", error.message);
-            // Handle logout error (e.g., display a message to the user)
+            console.error("❌ Error signing out: ", error.message);
+            showToast('Failed to logout. Please try again.', 'error');
         }
     };
 
@@ -289,7 +300,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                 <div className="flex justify-center items-center gap-8 animate-fadeIn">
                                     <button
                                         onClick={() => { navigate('/profile'); setShowUserDropdown(false); }}
-                                        className="px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-3 group relative"
+                                        className="profile-btn px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-3 group relative"
                                         style={{
                                             animation: 'fadeInUp 0.4s ease-out 0s both'
                                         }}
@@ -300,7 +311,7 @@ const Navbar = () => {    const navigate = useNavigate();
                                     </button>
                                     <button
                                         onClick={handleLogout}
-                                        className="px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-3 group relative"
+                                        className="logout-btn px-6 py-3 text-slate-200 hover:text-white transition-all duration-300 flex items-center space-x-3 group relative"
                                         style={{
                                             animation: 'fadeInUp 0.4s ease-out 0.1s both'
                                         }}
@@ -383,8 +394,9 @@ const Navbar = () => {    const navigate = useNavigate();
                                             onClick={() => {
                                                 navigate('/profile');
                                                 setIsMenuOpen(false);
+                                                setShowUserDropdown(false);
                                             }}
-                                            className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
+                                            className="profile-btn group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
                                         >
                                             {isAdmin ? (
                                                 <Shield className="w-5 h-5 mr-3 text-yellow-400 group-hover:text-yellow-300 transition-colors" />
@@ -396,11 +408,8 @@ const Navbar = () => {    const navigate = useNavigate();
                                             </span>
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                handleLogout();
-                                                setIsMenuOpen(false);
-                                            }}
-                                            className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
+                                            onClick={handleLogout}
+                                            className="logout-btn group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
                                         >
                                             <LogOut className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
                                             <span className="font-medium group-hover:text-purple-400 transition-colors flex-1 text-left">
