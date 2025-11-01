@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Lock, User, Shield, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import '../global-font.css';
 
 const AdminLogin = ({ onClose }) => {
     const [username, setUsername] = useState('');
