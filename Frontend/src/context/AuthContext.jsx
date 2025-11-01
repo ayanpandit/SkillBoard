@@ -12,6 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null); // Supabase uses sessions
   const [loading, setLoading] = useState(true);
   const [otpSent, setOtpSent] = useState(false); // Track if OTP has been sent
+  const [isAdmin, setIsAdmin] = useState(false); // Track if user is admin
 
   useEffect(() => {
     // Check for an existing session
@@ -21,6 +22,15 @@ export const AuthProvider = ({ children }) => {
       } = await supabase.auth.getSession();
       setSession(currentSession);
       setCurrentUser(currentSession?.user ?? null);
+      
+      // Check if admin is logged in from localStorage
+      const adminLoggedIn = localStorage.getItem('isAdmin') === 'true';
+      if (adminLoggedIn) {
+        const adminUser = JSON.parse(localStorage.getItem('adminUser') || '{}');
+        setIsAdmin(true);
+        setCurrentUser(adminUser);
+      }
+      
       setLoading(false);
     };
 
@@ -87,18 +97,65 @@ export const AuthProvider = ({ children }) => {
     return { data, error };
   };
 
+  // Admin login function
+  const adminSignIn = async (username, password) => {
+    const adminUsername = import.meta.env.VITE_ADMIN_USERNAME;
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+
+    if (username === adminUsername && password === adminPassword) {
+      // Create a mock admin user object
+      const adminUser = {
+        id: 'admin-user',
+        email: 'admin@skillboard.com',
+        user_metadata: {
+          full_name: 'Admin User',
+          role: 'admin'
+        },
+        role: 'admin'
+      };
+
+      // Store admin session in localStorage
+      localStorage.setItem('isAdmin', 'true');
+      localStorage.setItem('adminUser', JSON.stringify(adminUser));
+      
+      setIsAdmin(true);
+      setCurrentUser(adminUser);
+      
+      return true;
+    }
+    
+    return false;
+  };
+
+  // Custom sign out that handles both Supabase and admin logout
+  const customSignOut = async () => {
+    if (isAdmin) {
+      // Admin logout
+      localStorage.removeItem('isAdmin');
+      localStorage.removeItem('adminUser');
+      setIsAdmin(false);
+      setCurrentUser(null);
+      return { error: null };
+    } else {
+      // Regular Supabase logout
+      return supabase.auth.signOut();
+    }
+  };
+
   // Expose Supabase auth functions and user/session state
   const value = {
     signUp,
     signIn: signInWithPassword,
     signInWithOtp,
     verifyOtp,
-    signOut: () => supabase.auth.signOut(),
+    adminSignIn,
+    signOut: customSignOut,
     currentUser,
     session,
     loading,
     otpSent,
-    setOtpSent
+    setOtpSent,
+    isAdmin
   };
 
   return (

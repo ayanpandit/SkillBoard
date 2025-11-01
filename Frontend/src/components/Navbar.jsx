@@ -1,13 +1,13 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { Menu, X, Home, User, Phone, Briefcase, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, X, Home, User, Phone, Briefcase, ChevronDown, LogOut, Shield } from 'lucide-react';
 import LoginSignup from './LoginSignup';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext'; // Added import
 
 const Navbar = () => {    const navigate = useNavigate();
     const location = useLocation();
-    const { currentUser, signOut } = useAuth(); // Get currentUser and signOut from context
+    const { currentUser, signOut, isAdmin } = useAuth(); // Get currentUser, signOut, and isAdmin from context
     const { showToast } = useToast(); // Added useToast
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
@@ -200,7 +200,10 @@ const Navbar = () => {    const navigate = useNavigate();
                                         onClick={() => setShowUserDropdown(!showUserDropdown)}
                                         className="flex items-center space-x-2 text-white hover:text-purple-400 transition-colors duration-200 py-2"
                                     >
-                                        <span>Hi, {currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]}</span>
+                                        {isAdmin && (
+                                            <Shield className="w-5 h-5 text-yellow-400" />
+                                        )}
+                                        <span>Hi, {currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Admin'}</span>
                                         <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showUserDropdown ? 'rotate-180' : ''}`} />
                                     </button>
                                 </div>
@@ -364,9 +367,13 @@ const Navbar = () => {    const navigate = useNavigate();
                                             }}
                                             className="group flex items-center w-full px-4 py-3 rounded-xl text-white hover:bg-white/10 transition-all duration-300"
                                         >
-                                            <User className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
+                                            {isAdmin ? (
+                                                <Shield className="w-5 h-5 mr-3 text-yellow-400 group-hover:text-yellow-300 transition-colors" />
+                                            ) : (
+                                                <User className="w-5 h-5 mr-3 group-hover:text-purple-400 transition-colors" />
+                                            )}
                                             <span className="font-medium group-hover:text-purple-400 transition-colors flex-1 text-left">
-                                                Profile (Hi, {currentUser.user_metadata?.full_name || currentUser.email.split('@')[0]})
+                                                Profile (Hi, {currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0] || 'Admin'})
                                             </span>
                                         </button>
                                         <button

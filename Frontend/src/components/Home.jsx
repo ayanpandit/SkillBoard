@@ -1,15 +1,17 @@
 import bgImage from '../assets/bg.webp';
 import { useNavigate } from 'react-router-dom';
-import { Code2, Trophy, Users, Star, ExternalLink, ChevronDown } from 'lucide-react';
+import { Code2, Trophy, Users, Star, ExternalLink, ChevronDown, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import LoginSignup from './LoginSignup';
+import AdminLogin from './AdminLogin';
 import { useToast } from '../context/ToastContext';
 
 const HomePage = () => {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
     const [showLoginSignup, setShowLoginSignup] = useState(false);
+    const [showAdminLogin, setShowAdminLogin] = useState(false);
     const { showToast } = useToast();
 
     const scrollToCards = () => {
@@ -139,6 +141,11 @@ const HomePage = () => {
                 </div>
             )}
 
+            {/* Admin Login Modal */}
+            {showAdminLogin && (
+                <AdminLogin onClose={() => setShowAdminLogin(false)} />
+            )}
+
             {/* Static Background */}
             <div
                 className="fixed inset-0 bg-cover bg-center bg-no-repeat"
@@ -165,13 +172,27 @@ const HomePage = () => {
 
                         {/* Enhanced CTA Button */}
                         <div className="flex flex-col items-center space-y-8">
-                            <button
-                                onClick={scrollToCards}
-                                className="group relative px-12 py-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-bold text-xl rounded-2xl hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-500 shadow-2xl hover:shadow-purple-500/25 border border-white/20"
-                            >
-                                <span className="relative z-10">Start Comparing</span>
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
-                            </button>
+                            <div className="flex flex-col sm:flex-row items-center gap-4">
+                                <button
+                                    onClick={scrollToCards}
+                                    className="group relative px-12 py-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white font-bold text-xl rounded-2xl hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 transform hover:scale-110 transition-all duration-500 shadow-2xl hover:shadow-purple-500/25 border border-white/20"
+                                >
+                                    <span className="relative z-10">Start Comparing</span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"></div>
+                                </button>
+
+                                {/* Admin Login Button */}
+                                <button
+                                    onClick={() => setShowAdminLogin(true)}
+                                    className="group relative px-8 py-6 bg-gradient-to-r from-slate-700 via-slate-800 to-slate-900 text-white font-bold text-xl rounded-2xl hover:from-slate-600 hover:via-slate-700 hover:to-slate-800 transform hover:scale-110 transition-all duration-500 shadow-2xl hover:shadow-slate-500/25 border-2 border-purple-500/50 hover:border-purple-400"
+                                >
+                                    <span className="relative z-10 flex items-center gap-2">
+                                        <Shield className="w-6 h-6" />
+                                        Admin Access
+                                    </span>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                                </button>
+                            </div>
 
                             {/* Animated Scroll Indicator */}
                             <div className="flex flex-col items-center space-y-4 animate-bounce">
