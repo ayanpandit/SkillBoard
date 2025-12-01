@@ -116,7 +116,9 @@ function GithubProfileAnalyzer() {
   // Helper to safely get nested values
   const getNestedValue = (obj, path, defaultValue = 'N/A') => {
     const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
-    return (value === undefined || value === null || value === '') ? defaultValue : value;
+    // Allow 0 and false as valid values, only use default for null/undefined/empty string
+    if (value === undefined || value === null || value === '') return defaultValue;
+    return value;
   };
 
   // Fetch single user data
@@ -540,7 +542,10 @@ function GithubProfileAnalyzer() {
     { key: 'name', label: 'Name', sortable: true, getValue: user => getNestedValue(user, 'name', '').toLowerCase() || getNestedValue(user, 'profile.name', '').toLowerCase() },
     { key: 'followers', label: 'Followers', sortable: true, getValue: user => getNestedValue(user, 'followers', 0) || getNestedValue(user, 'profile.followers', 0) },
     { key: 'repos', label: 'Public Repos', sortable: true, getValue: user => getNestedValue(user, 'publicRepos', 0) || getNestedValue(user, 'profile.publicRepos', 0) },
-    { key: 'contributions', label: 'Total Contributions', sortable: true, getValue: user => getNestedValue(user, 'totalContributions', 0) || getNestedValue(user, 'stats.totalContributions', 0) },
+    { key: 'contributions', label: 'Total Contributions', sortable: true, getValue: user => {
+      const val = getNestedValue(user, 'totalContributions', null) ?? getNestedValue(user, 'stats.totalContributions', 0);
+      return val;
+    } },
     { key: 'forks', label: 'Total Forks', sortable: true, getValue: user => getNestedValue(user, 'totalForks', 0) || getNestedValue(user, 'stats.totalForks', 0) },
     { key: 'language', label: 'Top Language', sortable: true, getValue: user => getNestedValue(user, 'topLanguage', 'N/A').toLowerCase() },
     { key: 'status', label: 'Status', sortable: true, getValue: user => user.success ? 1 : 0 },
@@ -587,7 +592,10 @@ function GithubProfileAnalyzer() {
       'Name': getNestedValue(user, 'name', 'N/A') || getNestedValue(user, 'profile.name', 'N/A'),
       'Followers': getNestedValue(user, 'followers', 0) || getNestedValue(user, 'profile.followers', 0),
       'Public Repos': getNestedValue(user, 'publicRepos', 0) || getNestedValue(user, 'profile.publicRepos', 0),
-      'Total Contributions': getNestedValue(user, 'totalContributions', 0) || getNestedValue(user, 'stats.totalContributions', 0),
+      'Total Contributions': (() => {
+        const val = getNestedValue(user, 'totalContributions', null) ?? getNestedValue(user, 'stats.totalContributions', null);
+        return val !== null ? val : 0;
+      })(),
       'Total Forks': getNestedValue(user, 'totalForks', 0) || getNestedValue(user, 'stats.totalForks', 0),
       'Top Language': getNestedValue(user, 'topLanguage', 'N/A'),
       'Profile URL': getNestedValue(user, 'profileUrl', 'N/A') || getNestedValue(user, 'profile.profileUrl', 'N/A'),
@@ -783,7 +791,10 @@ function GithubProfileAnalyzer() {
                       {getNestedValue(user, 'publicRepos', 0) || getNestedValue(user, 'profile.publicRepos', 0)}
                     </td>
                     <td className="px-5 py-4 font-semibold text-orange-400">
-                      {getNestedValue(user, 'totalContributions', 0) || getNestedValue(user, 'stats.totalContributions', 0)}
+                      {(() => {
+                        const val = getNestedValue(user, 'totalContributions', null) ?? getNestedValue(user, 'stats.totalContributions', null);
+                        return val !== null ? val : 'N/A';
+                      })()}
                     </td>
                     <td className="px-5 py-4 font-semibold text-blue-400">
                       {getNestedValue(user, 'totalForks', 0) || getNestedValue(user, 'stats.totalForks', 0)}
