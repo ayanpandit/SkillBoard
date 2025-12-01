@@ -375,16 +375,18 @@ app.post('/api/github/bulk', async (req, res) => {
   // Process all users in parallel for maximum speed
   const results = await Promise.all(usernames.map(async (username) => {
     try {
-      // Fetch user and repos in parallel
-      const [user, repos] = await Promise.all([
+      // Fetch user, repos, and contributions in parallel
+      const [user, repos, contributions] = await Promise.all([
         githubApiRequest(`/users/${username}`, username),
-        githubApiRequest(`/users/${username}/repos?per_page=100&sort=updated`, username)
+        githubApiRequest(`/users/${username}/repos?per_page=100&sort=updated`, username),
+        fetchContributionGraph(username)
       ]);
       
       // Calculate basic stats
       const totalStars = repos.reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
       const totalForks = repos.reduce((sum, repo) => sum + (repo.forks_count || 0), 0);
       const languageStats = calculateLanguageStats(repos);
+      const totalContributions = contributions?.contributionCalendar?.totalContributions || 0;
       
       return {
         success: true,
@@ -399,6 +401,7 @@ app.post('/api/github/bulk', async (req, res) => {
         following: user.following,
         totalStars,
         totalForks,
+        totalContributions,
         topLanguage: languageStats[0]?.language || 'N/A',
         profileUrl: user.html_url
       };
