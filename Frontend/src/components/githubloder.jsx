@@ -9,7 +9,7 @@ function GithubLoader() {
   return (
     <div className="bg-black min-h-screen">
       {/* Tab Switcher */}
-      <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-40 bg-slate-800/90 backdrop-blur-md rounded-full p-1 border border-slate-700 shadow-xl">
+      <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-40 bg-slate-800/90 backdrop-blur-md rounded-full p-1 border border-slate-700 shadow-xl">
         <div className="flex gap-1">
           <button
             onClick={() => setActiveTab('profiles')}

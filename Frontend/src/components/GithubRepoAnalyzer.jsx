@@ -7,8 +7,8 @@ import {
   Users, Package, FileText, Lock, ExternalLink, Tag, TrendingUp, Activity
 } from 'lucide-react';
 
-const API_REPO_URL = import.meta.env.VITE_GITHUB_API_URL?.replace('/github', '/github/repo') || 'http://localhost:3003/api/github/repo';
-const API_BULK_REPO_URL = import.meta.env.VITE_GITHUB_API_URL?.replace('/github', '/github/repos/bulk') || 'http://localhost:3003/api/github/repos/bulk';
+const API_REPO_URL = import.meta.env.VITE_GITHUB_REPO_API_URL || import.meta.env.VITE_GITHUB_API_URL?.replace('/api/github', '/api/github/repo') || 'http://localhost:3003/api/github/repo';
+const API_BULK_REPO_URL = import.meta.env.VITE_GITHUB_REPO_BULK_API_URL || import.meta.env.VITE_GITHUB_API_URL?.replace('/api/github', '/api/github/repos/bulk') || 'http://localhost:3003/api/github/repos/bulk';
 
 function GithubRepoAnalyzer() {
   const [repoInput, setRepoInput] = useState('');
@@ -73,7 +73,47 @@ function GithubRepoAnalyzer() {
     setProcessingProgress(0);
 
     const result = await fetchSingleRepo(parsed.owner, parsed.repo);
-    setSearchResults([result]);
+    
+    // Transform single repo response to match bulk format for table display
+    const transformedResult = result.success && !result.isPrivate ? {
+      ...result,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      name: result.basic?.fullName || `${parsed.owner}/${parsed.repo}`,
+      description: result.basic?.description || 'N/A',
+      stars: result.stats?.stars || 0,
+      forks: result.stats?.forks || 0,
+      watchers: result.stats?.watchers || 0,
+      language: result.languages?.[0]?.language || 'N/A',
+      license: result.basic?.license || 'N/A',
+      url: result.basic?.url || `https://github.com/${parsed.owner}/${parsed.repo}`
+    } : result.isPrivate ? {
+      ...result,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      name: result.basic?.fullName || `${parsed.owner}/${parsed.repo}`,
+      description: 'Private Repository',
+      stars: 0,
+      forks: 0,
+      watchers: 0,
+      language: 'N/A',
+      license: 'N/A',
+      url: result.basic?.url || `https://github.com/${parsed.owner}/${parsed.repo}`
+    } : {
+      ...result,
+      owner: parsed.owner,
+      repo: parsed.repo,
+      name: `${parsed.owner}/${parsed.repo}`,
+      description: result.error || 'Error',
+      stars: 0,
+      forks: 0,
+      watchers: 0,
+      language: 'N/A',
+      license: 'N/A',
+      url: `https://github.com/${parsed.owner}/${parsed.repo}`
+    };
+    
+    setSearchResults([transformedResult]);
     setProcessingProgress(1);
     setIsLoading(false);
     setRepoInput('');
