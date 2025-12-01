@@ -657,7 +657,7 @@ app.post('/api/github/repos/bulk', async (req, res) => {
         watchers: repoData.watchers_count,
         openIssues: repoData.open_issues_count,
         language: topLanguage ? topLanguage[0] : 'N/A',
-        license: repoData.license?.name || 'No license',
+        lastCommit: repoData.pushed_at,
         createdAt: repoData.created_at,
         updatedAt: repoData.updated_at,
         size: repoData.size,

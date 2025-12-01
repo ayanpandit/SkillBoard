@@ -9,8 +9,8 @@ function GithubLoader() {
   return (
     <div className="bg-black min-h-screen">
       {/* Tab Switcher */}
-      <div className="fixed top-32 left-1/2 transform -translate-x-1/2 z-40 bg-slate-800/90 backdrop-blur-md rounded-full p-1 border border-slate-700 shadow-xl">
-        <div className="flex gap-1">
+      <div className="relative pt-24 pb-6 flex justify-center">
+        <div className="bg-slate-800/90 backdrop-blur-md rounded-full p-1 border border-slate-700 shadow-xl inline-flex">
           <button
             onClick={() => setActiveTab('profiles')}
             className={`px-6 py-3 rounded-full flex items-center gap-2 transition-all duration-300 ${
@@ -37,7 +37,7 @@ function GithubLoader() {
       </div>
 
       {/* Content */}
-      <div className="pt-4">
+      <div>
         {activeTab === 'profiles' ? (
           <GithubProfileAnalyzer />
         ) : (

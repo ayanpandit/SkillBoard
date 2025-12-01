@@ -85,6 +85,7 @@ function GithubRepoAnalyzer() {
       forks: result.stats?.forks || 0,
       watchers: result.stats?.watchers || 0,
       language: result.languages?.[0]?.language || 'N/A',
+      lastCommit: result.basic?.pushedAt || result.basic?.updatedAt,
       license: result.basic?.license || 'N/A',
       url: result.basic?.url || `https://github.com/${parsed.owner}/${parsed.repo}`
     } : result.isPrivate ? {
@@ -175,7 +176,7 @@ function GithubRepoAnalyzer() {
       'Watchers': repo.watchers || 0,
       'Open Issues': repo.openIssues || 0,
       'Language': repo.language || 'N/A',
-      'License': repo.license || 'N/A',
+      'Last Commit': repo.lastCommit ? new Date(repo.lastCommit).toLocaleDateString() : 'N/A',
       'Size (KB)': repo.size || 0,
       'Private': repo.isPrivate ? 'Yes' : 'No',
       'Fork': repo.fork ? 'Yes' : 'No',
@@ -199,7 +200,7 @@ function GithubRepoAnalyzer() {
         .pretty-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
       `}</style>
 
-      <header className="text-center mb-6 pt-24">
+      <header className="text-center mb-6">
         <h1 className="text-4xl md:text-5xl font-bold text-purple-400">GitHub Repository Analyzer</h1>
         <p className="text-slate-400 mt-2">Comprehensive GitHub repository analytics and insights</p>
       </header>
@@ -218,7 +219,7 @@ function GithubRepoAnalyzer() {
                 value={repoInput}
                 onChange={(e) => setRepoInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSingleSearch()}
-                placeholder="e.g., facebook/react or https://github.com/facebook/react"
+                placeholder="e.g., https://github.com/ayanpandit/SkillBoard"
                 className="flex-1 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-100 placeholder-slate-400 border border-slate-600/50 focus:ring-2 focus:ring-purple-500 outline-none"
               />
               <button
@@ -306,7 +307,7 @@ function GithubRepoAnalyzer() {
                   <th className="px-5 py-3">🍴 Forks</th>
                   <th className="px-5 py-3">👀 Watchers</th>
                   <th className="px-5 py-3">Language</th>
-                  <th className="px-5 py-3">License</th>
+                  <th className="px-5 py-3">📅 Last Commit</th>
                   <th className="px-5 py-3">Status</th>
                 </tr>
               </thead>
@@ -343,7 +344,13 @@ function GithubRepoAnalyzer() {
                     <td className="px-5 py-4 font-semibold text-blue-400">{repo.forks || 0}</td>
                     <td className="px-5 py-4 font-semibold text-purple-400">{repo.watchers || 0}</td>
                     <td className="px-5 py-4">{repo.language || 'N/A'}</td>
-                    <td className="px-5 py-4">{repo.license || 'N/A'}</td>
+                    <td className="px-5 py-4 text-slate-300">
+                      {repo.lastCommit ? new Date(repo.lastCommit).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      }) : 'N/A'}
+                    </td>
                     <td className="px-5 py-4">
                       {repo.success ? (
                         repo.isPrivate ? (
@@ -578,15 +585,19 @@ function GithubRepoAnalyzer() {
                         Recent Commits
                       </h3>
                       <div className="space-y-2 max-h-64 overflow-y-auto pretty-scrollbar">
-                        {selectedRepo.recentCommits.slice(0, 10).map((commit, idx) => (
-                          <div key={idx} className="p-3 bg-slate-600/20 rounded-lg border border-slate-600/30">
-                            <div className="flex justify-between items-start mb-1">
-                              <p className="text-sm font-medium">{commit.message}</p>
-                              <a href={commit.url} target="_blank" rel="noopener noreferrer" className="text-purple-400 text-xs hover:underline">
+                        {selectedRepo.recentCommits.slice(0, 15).map((commit, idx) => (
+                          <div key={idx} className="p-3 bg-slate-600/20 rounded-lg border border-slate-600/30 hover:border-purple-500/50 transition-colors">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-slate-200 mb-1">{commit.message}</p>
+                                <p className="text-xs text-slate-400">
+                                  <span className="font-semibold text-purple-400">{commit.author}</span> • {new Date(commit.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(commit.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                              <a href={commit.url} target="_blank" rel="noopener noreferrer" className="ml-3 text-purple-400 text-xs hover:underline font-mono bg-slate-700/50 px-2 py-1 rounded">
                                 {commit.sha}
                               </a>
                             </div>
-                            <p className="text-xs text-slate-400">{commit.author} • {new Date(commit.date).toLocaleDateString()}</p>
                           </div>
                         ))}
                       </div>
