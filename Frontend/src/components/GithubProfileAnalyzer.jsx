@@ -115,7 +115,10 @@ function GithubProfileAnalyzer() {
 
   // Helper to safely get nested values
   const getNestedValue = (obj, path, defaultValue = 'N/A') => {
-    const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
+    const value = path.split('.').reduce((acc, part) => {
+      if (acc === null || acc === undefined) return undefined;
+      return acc[part];
+    }, obj);
     // Allow 0 and false as valid values, only use default for null/undefined/empty string
     if (value === undefined || value === null || value === '') return defaultValue;
     return value;

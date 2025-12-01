@@ -418,6 +418,265 @@ app.post('/api/github/bulk', async (req, res) => {
   res.json({ results });
 });
 
+// Route: Get single repository details
+app.get('/api/github/repo/:owner/:repo', async (req, res) => {
+  const { owner, repo } = req.params;
+  
+  try {
+    console.log(`Fetching repository: ${owner}/${repo}`);
+    
+    // Fetch all repo data in parallel
+    const [repoData, languages, contributors, commits, issues, pulls, releases, topics, readme] = await Promise.all([
+      githubApiRequest(`/repos/${owner}/${repo}`, owner),
+      githubApiRequest(`/repos/${owner}/${repo}/languages`, owner).catch(() => ({})),
+      githubApiRequest(`/repos/${owner}/${repo}/contributors?per_page=100`, owner).catch(() => []),
+      githubApiRequest(`/repos/${owner}/${repo}/commits?per_page=100`, owner).catch(() => []),
+      githubApiRequest(`/repos/${owner}/${repo}/issues?state=all&per_page=100`, owner).catch(() => []),
+      githubApiRequest(`/repos/${owner}/${repo}/pulls?state=all&per_page=100`, owner).catch(() => []),
+      githubApiRequest(`/repos/${owner}/${repo}/releases?per_page=100`, owner).catch(() => []),
+      githubApiRequest(`/repos/${owner}/${repo}/topics`, owner).catch(() => ({ names: [] })),
+      githubApiRequest(`/repos/${owner}/${repo}/readme`, owner).catch(() => null)
+    ]);
+
+    // Check if repo is private
+    if (repoData.private) {
+      return res.json({
+        success: true,
+        isPrivate: true,
+        owner,
+        repo,
+        message: 'This is a private repository. Limited information available.',
+        basic: {
+          name: repoData.name,
+          fullName: repoData.full_name,
+          private: true,
+          url: repoData.html_url
+        }
+      });
+    }
+
+    // Calculate language percentages
+    const totalBytes = Object.values(languages).reduce((sum, bytes) => sum + bytes, 0);
+    const languageBreakdown = Object.entries(languages).map(([lang, bytes]) => ({
+      language: lang,
+      bytes,
+      percentage: ((bytes / totalBytes) * 100).toFixed(2)
+    })).sort((a, b) => b.bytes - a.bytes);
+
+    // Process contributors
+    const topContributors = contributors.slice(0, 20).map(c => ({
+      username: c.login,
+      contributions: c.contributions,
+      avatar: c.avatar_url,
+      profile: c.html_url
+    }));
+
+    // Process commit activity
+    const commitActivity = commits.slice(0, 50).map(c => ({
+      sha: c.sha.substring(0, 7),
+      message: c.commit.message.split('\n')[0],
+      author: c.commit.author.name,
+      date: c.commit.author.date,
+      url: c.html_url
+    }));
+
+    // Separate issues and PRs
+    const openIssues = issues.filter(i => !i.pull_request && i.state === 'open');
+    const closedIssues = issues.filter(i => !i.pull_request && i.state === 'closed');
+    const openPRs = pulls.filter(p => p.state === 'open');
+    const closedPRs = pulls.filter(p => p.state === 'closed' || p.state === 'merged');
+
+    // Build comprehensive response
+    const repoAnalysis = {
+      success: true,
+      isPrivate: false,
+      basic: {
+        name: repoData.name,
+        fullName: repoData.full_name,
+        owner: repoData.owner.login,
+        ownerAvatar: repoData.owner.avatar_url,
+        description: repoData.description || 'No description',
+        url: repoData.html_url,
+        homepage: repoData.homepage || null,
+        createdAt: repoData.created_at,
+        updatedAt: repoData.updated_at,
+        pushedAt: repoData.pushed_at,
+        size: repoData.size,
+        defaultBranch: repoData.default_branch,
+        license: repoData.license?.name || 'No license'
+      },
+      stats: {
+        stars: repoData.stargazers_count,
+        watchers: repoData.watchers_count,
+        forks: repoData.forks_count,
+        openIssues: repoData.open_issues_count,
+        subscribers: repoData.subscribers_count,
+        networkCount: repoData.network_count,
+        totalCommits: commits.length,
+        totalContributors: contributors.length,
+        totalReleases: releases.length
+      },
+      features: {
+        hasIssues: repoData.has_issues,
+        hasProjects: repoData.has_projects,
+        hasDownloads: repoData.has_downloads,
+        hasWiki: repoData.has_wiki,
+        hasPages: repoData.has_pages,
+        hasDiscussions: repoData.has_discussions,
+        archived: repoData.archived,
+        disabled: repoData.disabled,
+        fork: repoData.fork,
+        template: repoData.is_template
+      },
+      languages: languageBreakdown,
+      topics: topics.names || [],
+      contributors: topContributors,
+      recentCommits: commitActivity,
+      issues: {
+        open: openIssues.length,
+        closed: closedIssues.length,
+        recentOpen: openIssues.slice(0, 10).map(i => ({
+          number: i.number,
+          title: i.title,
+          user: i.user.login,
+          createdAt: i.created_at,
+          url: i.html_url,
+          labels: i.labels.map(l => l.name)
+        }))
+      },
+      pullRequests: {
+        open: openPRs.length,
+        closed: closedPRs.length,
+        recentOpen: openPRs.slice(0, 10).map(p => ({
+          number: p.number,
+          title: p.title,
+          user: p.user.login,
+          createdAt: p.created_at,
+          url: p.html_url
+        }))
+      },
+      releases: releases.slice(0, 10).map(r => ({
+        name: r.name || r.tag_name,
+        tagName: r.tag_name,
+        publishedAt: r.published_at,
+        author: r.author?.login,
+        url: r.html_url,
+        downloads: r.assets.reduce((sum, a) => sum + a.download_count, 0)
+      })),
+      readme: readme ? {
+        content: Buffer.from(readme.content, 'base64').toString('utf-8').substring(0, 5000),
+        size: readme.size,
+        url: readme.html_url
+      } : null
+    };
+    
+    res.json(repoAnalysis);
+    
+  } catch (error) {
+    console.error(`Error fetching repository ${owner}/${repo}:`, error);
+    if (error.response?.status === 404) {
+      return res.json({
+        success: false,
+        error: 'Repository not found',
+        owner,
+        repo
+      });
+    }
+    res.json({
+      success: false,
+      error: error.message || 'Failed to fetch repository data',
+      owner,
+      repo
+    });
+  }
+});
+
+// Route: Bulk repository analysis
+app.post('/api/github/repos/bulk', async (req, res) => {
+  const { repositories } = req.body;
+  
+  if (!repositories || !Array.isArray(repositories) || repositories.length === 0) {
+    return res.status(400).json({ error: 'Invalid request: repositories array required' });
+  }
+  
+  console.log(`Bulk repository request for ${repositories.length} repos`);
+  
+  // Process all repos in parallel
+  const results = await Promise.all(repositories.map(async (repoUrl) => {
+    try {
+      // Parse GitHub URL or owner/repo format
+      let owner, repo;
+      
+      if (repoUrl.includes('github.com')) {
+        const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/\?#]+)/);
+        if (match) {
+          owner = match[1];
+          repo = match[2].replace(/\.git$/, '');
+        }
+      } else if (repoUrl.includes('/')) {
+        [owner, repo] = repoUrl.split('/');
+      }
+      
+      if (!owner || !repo) {
+        return {
+          success: false,
+          error: 'Invalid repository format',
+          input: repoUrl
+        };
+      }
+
+      // Fetch basic repo data
+      const repoData = await githubApiRequest(`/repos/${owner}/${repo}`, owner);
+      
+      if (repoData.private) {
+        return {
+          success: true,
+          isPrivate: true,
+          name: repoData.full_name,
+          owner,
+          repo,
+          url: repoData.html_url
+        };
+      }
+
+      // Fetch languages for breakdown
+      const languages = await githubApiRequest(`/repos/${owner}/${repo}/languages`, owner).catch(() => ({}));
+      const totalBytes = Object.values(languages).reduce((sum, bytes) => sum + bytes, 0);
+      const topLanguage = Object.entries(languages).sort((a, b) => b[1] - a[1])[0];
+
+      return {
+        success: true,
+        isPrivate: false,
+        name: repoData.full_name,
+        owner,
+        repo,
+        description: repoData.description || 'No description',
+        url: repoData.html_url,
+        stars: repoData.stargazers_count,
+        forks: repoData.forks_count,
+        watchers: repoData.watchers_count,
+        openIssues: repoData.open_issues_count,
+        language: topLanguage ? topLanguage[0] : 'N/A',
+        license: repoData.license?.name || 'No license',
+        createdAt: repoData.created_at,
+        updatedAt: repoData.updated_at,
+        size: repoData.size,
+        archived: repoData.archived,
+        fork: repoData.fork
+      };
+    } catch (error) {
+      console.error(`Error fetching repository ${repoUrl}:`, error);
+      return {
+        success: false,
+        error: error.response?.status === 404 ? 'Repository not found' : error.message,
+        input: repoUrl
+      };
+    }
+  }));
+  
+  res.json({ results });
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
