@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
@@ -46,6 +47,7 @@ const Section = ({ title, children, icon, defaultOpen = false }) => {
 };
 
 function GithubProfileAnalyzer() {
+  const location = useLocation();
   const [usernameInput, setUsernameInput] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +61,57 @@ function GithubProfileAnalyzer() {
   const [sortConfig, setSortConfig] = useState({ key: 'sno', direction: 'ascending' });
   const [filterUsername, setFilterUsername] = useState('');
   const [filterName, setFilterName] = useState('');
+
+  // Handle file upload from Profile component
+  useEffect(() => {
+    const handleFileFromProfile = async () => {
+      if (location.state?.fileUrl && location.state?.fileName) {
+        const { fileUrl, fileName } = location.state;
+        setLastSearchedFile(fileName);
+        
+        try {
+          setIsLoading(true);
+          setError('');
+          
+          // Fetch the file
+          const response = await fetch(fileUrl);
+          if (!response.ok) {
+            throw new Error('Failed to fetch file');
+          }
+          
+          const arrayBuffer = await response.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+          
+          // Extract usernames from first column (skip header)
+          const usernames = data
+            .slice(1)
+            .map(row => row[0])
+            .filter(username => username && String(username).trim());
+          
+          if (usernames.length === 0) {
+            setError('No valid usernames found in the uploaded file.');
+            setIsLoading(false);
+            return;
+          }
+          
+          // Process the usernames
+          await processUsernames(usernames);
+          
+        } catch (err) {
+          console.error('Error processing file from profile:', err);
+          setError('Failed to process the uploaded file. Please try again.');
+          setIsLoading(false);
+        }
+        
+        // Clear the location state to prevent re-processing on component re-render
+        window.history.replaceState({}, document.title);
+      }
+    };
+    
+    handleFileFromProfile();
+  }, [location.state]);
 
   // Helper to safely get nested values
   const getNestedValue = (obj, path, defaultValue = 'N/A') => {
