@@ -9,11 +9,10 @@ const PORT = process.env.PORT || 10000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://skillboard-nit5.onrender.com', 'https://skillboard.vercel.app', 'https://skillboard.netlify.app']
-    : '*',
-  methods: ['GET', 'POST'],
-  credentials: true
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  credentials: false,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
@@ -65,7 +64,8 @@ const generateApiSig = (methodName, params) => {
 
 // Make CodeForces API request
 const cfApiRequest = async (method, params = {}, useAuth = false) => {
-  await waitForRateLimit();
+  // Skip rate limiting for bulk operations to improve performance
+  // await waitForRateLimit();
   
   try {
     let requestParams = { ...params };
@@ -76,7 +76,7 @@ const cfApiRequest = async (method, params = {}, useAuth = false) => {
     
     const response = await axios.get(`${CF_API_BASE}/${method}`, {
       params: requestParams,
-      timeout: 10000
+      timeout: 15000 // Increased timeout to 15 seconds
     });
     
     if (response.data.status === 'OK') {
@@ -254,62 +254,74 @@ app.post('/api/codeforces/bulk', async (req, res) => {
   console.log(`Bulk request for ${usernames.length} users`);
   
   const results = [];
+  const batchSize = 5;
   
-  for (const username of usernames) {
-    try {
-      // Fetch user info
-      const userInfoResult = await cfApiRequest('user.info', { handles: username });
-      
-      if (!userInfoResult.success) {
+  // Process in batches to avoid overwhelming the API
+  for (let i = 0; i < usernames.length; i += batchSize) {
+    const batch = usernames.slice(i, i + batchSize);
+    
+    await Promise.all(batch.map(async (username) => {
+      try {
+        // Fetch user info
+        const userInfoResult = await cfApiRequest('user.info', { handles: username });
+        
+        if (!userInfoResult.success) {
+          console.log(`Failed to fetch user ${username}: ${userInfoResult.error}`);
+          results.push({
+            success: false,
+            error: userInfoResult.error,
+            username
+          });
+          return;
+        }
+        
+        const userInfo = userInfoResult.data[0];
+        
+        // Fetch submissions (limited for bulk)
+        const submissionsResult = await cfApiRequest('user.status', { handle: username, from: 1, count: 1000 });
+        const submissions = submissionsResult.success ? submissionsResult.data : [];
+        
+        // Fetch rating history
+        const ratingResult = await cfApiRequest('user.rating', { handle: username });
+        const ratingHistory = ratingResult.success ? ratingResult.data : [];
+        
+        // Calculate basic stats
+        const solvedStats = countSolvedProblems(submissions);
+        const rankInfo = getRankTitle(userInfo.rating);
+        
+        results.push({
+          success: true,
+          username,
+          handle: userInfo.handle,
+          firstName: userInfo.firstName || '',
+          lastName: userInfo.lastName || '',
+          country: userInfo.country || 'N/A',
+          city: userInfo.city || 'N/A',
+          organization: userInfo.organization || 'N/A',
+          rating: userInfo.rating || 0,
+          maxRating: userInfo.maxRating || 0,
+          rank: userInfo.rank || 'Unrated',
+          maxRank: userInfo.maxRank || 'Unrated',
+          rankColor: rankInfo.color,
+          contribution: userInfo.contribution || 0,
+          problemsSolved: solvedStats.count,
+          contestsParticipated: ratingHistory.length,
+          avatar: userInfo.avatar || ''
+        });
+        
+        console.log(`Successfully fetched data for ${username}`);
+        
+      } catch (error) {
+        console.error(`Error fetching user ${username}:`, error.message);
         results.push({
           success: false,
-          error: userInfoResult.error,
+          error: error.message || 'Failed to fetch user data',
           username
         });
-        continue;
       }
-      
-      const userInfo = userInfoResult.data[0];
-      
-      // Fetch submissions (limited for bulk)
-      const submissionsResult = await cfApiRequest('user.status', { handle: username, from: 1, count: 1000 });
-      const submissions = submissionsResult.success ? submissionsResult.data : [];
-      
-      // Fetch rating history
-      const ratingResult = await cfApiRequest('user.rating', { handle: username });
-      const ratingHistory = ratingResult.success ? ratingResult.data : [];
-      
-      // Calculate basic stats
-      const solvedStats = countSolvedProblems(submissions);
-      const rankInfo = getRankTitle(userInfo.rating);
-      
-      results.push({
-        success: true,
-        username,
-        handle: userInfo.handle,
-        firstName: userInfo.firstName || '',
-        lastName: userInfo.lastName || '',
-        country: userInfo.country || 'N/A',
-        city: userInfo.city || 'N/A',
-        organization: userInfo.organization || 'N/A',
-        rating: userInfo.rating || 0,
-        maxRating: userInfo.maxRating || 0,
-        rank: userInfo.rank || 'Unrated',
-        maxRank: userInfo.maxRank || 'Unrated',
-        rankColor: rankInfo.color,
-        contribution: userInfo.contribution || 0,
-        problemsSolved: solvedStats.count,
-        contestsParticipated: ratingHistory.length,
-        avatar: userInfo.avatar || ''
-      });
-      
-    } catch (error) {
-      console.error(`Error fetching user ${username}:`, error);
-      results.push({
-        success: false,
-        error: error.message || 'Failed to fetch user data',
-        username
-      });
+    }));    // Small delay between batches (500ms instead of 2s per request)
+    if (i + batchSize < usernames.length) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
   
