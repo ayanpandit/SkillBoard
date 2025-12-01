@@ -152,6 +152,46 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
     }
   };
 
+  // Handle initial file upload from Profile page
+  useEffect(() => {
+    const processInitialFile = async () => {
+      if (initialFileUrl && !lastSearchedFile) {
+        try {
+          const response = await fetch(initialFileUrl);
+          const blob = await response.blob();
+          const fileFromBlob = new File([blob], initialFileName || 'uploaded_file.csv', {
+            type: blob.type
+          });
+          setLastSearchedFile(fileFromBlob);
+          
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+              
+              const usernames = jsonData
+                .flat()
+                .map(val => String(val).trim())
+                .filter(val => val && val.toLowerCase() !== 'username');
+              
+              await processUsernames(usernames);
+            } catch (err) {
+              setError('Failed to parse the uploaded file. Please ensure it\'s a valid CSV or Excel file.');
+            }
+          };
+          reader.readAsArrayBuffer(fileFromBlob);
+        } catch (err) {
+          setError('Failed to load the uploaded file.');
+        }
+      }
+    };
+    
+    processInitialFile();
+  }, [initialFileUrl, initialFileName]);
+
   // Sortable header component
   const SortableHeader = ({ columnKey, title, currentSortConfig, onRequestSort }) => (
     <th scope="col" className="px-5 py-3 cursor-pointer hover:bg-slate-600/50 transition-colors select-none" onClick={() => onRequestSort(columnKey)}>
