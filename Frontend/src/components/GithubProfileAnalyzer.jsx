@@ -754,7 +754,17 @@ function GithubProfileAnalyzer() {
                   <tr
                     key={user.username}
                     className="bg-slate-800/20 backdrop-blur-sm border-b border-slate-700/50 hover:bg-slate-700/40 cursor-pointer transition-colors"
-                    onClick={() => setSelectedUser(user)}
+                    onClick={async () => {
+                      // If user data is from bulk (missing detailed info), fetch full data
+                      if (!user.profile && !user.stats && user.success) {
+                        setIsLoading(true);
+                        const fullData = await fetchSingleUserData(user.username);
+                        setIsLoading(false);
+                        setSelectedUser(fullData);
+                      } else {
+                        setSelectedUser(user);
+                      }
+                    }}
                   >
                     <td className="px-5 py-4 font-medium">{index + 1}</td>
                     <td className="px-5 py-4">

@@ -1,10 +1,34 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const http = require('http');
+const https = require('https');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3003;
+
+// Configure axios with connection pooling for extreme speed
+const httpAgent = new http.Agent({ 
+  keepAlive: true, 
+  maxSockets: 500,
+  maxFreeSockets: 100,
+  timeout: 60000,
+  keepAliveMsecs: 30000
+});
+
+const httpsAgent = new https.Agent({ 
+  keepAlive: true, 
+  maxSockets: 500,
+  maxFreeSockets: 100,
+  timeout: 60000,
+  keepAliveMsecs: 30000,
+  rejectUnauthorized: true
+});
+
+axios.defaults.httpAgent = httpAgent;
+axios.defaults.httpsAgent = httpsAgent;
+axios.defaults.timeout = 10000;
 
 // Middleware
 app.use(cors({
@@ -19,10 +43,6 @@ app.use(express.json());
 // GitHub API Configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_API_BASE = 'https://api.github.com';
-
-// Rate limiting: GitHub allows 5000 requests per hour with token
-let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 100; // 100ms between requests (6000 req/min, well under limit)
 
 // In-memory cache with TTL
 class TTLCache {
@@ -57,16 +77,6 @@ class TTLCache {
 
 const cache = new TTLCache();
 
-// Helper function to wait for rate limit
-const waitForRateLimit = async () => {
-  const now = Date.now();
-  const timeSinceLastRequest = now - lastRequestTime;
-  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-    await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
-  }
-  lastRequestTime = Date.now();
-};
-
 // Make GitHub API request with caching
 const githubApiRequest = async (endpoint, username) => {
   const cacheKey = `${username}:${endpoint}`;
@@ -75,8 +85,6 @@ const githubApiRequest = async (endpoint, username) => {
     console.log(`Cache hit for ${cacheKey}`);
     return cached;
   }
-
-  await waitForRateLimit();
   
   try {
     const response = await axios.get(`${GITHUB_API_BASE}${endpoint}`, {
@@ -107,8 +115,6 @@ const fetchContributionGraph = async (username) => {
   const cacheKey = `${username}:contributions`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
-
-  await waitForRateLimit();
 
   const query = `
     query($username: String!) {
@@ -366,22 +372,21 @@ app.post('/api/github/bulk', async (req, res) => {
   
   console.log(`Bulk request for ${usernames.length} users`);
   
-  const results = [];
-  
-  for (const username of usernames) {
+  // Process all users in parallel for maximum speed
+  const results = await Promise.all(usernames.map(async (username) => {
     try {
-      // Fetch basic user info
-      const user = await githubApiRequest(`/users/${username}`, username);
-      
-      // Fetch repos (limited for bulk)
-      const repos = await githubApiRequest(`/users/${username}/repos?per_page=100&sort=updated`, username);
+      // Fetch user and repos in parallel
+      const [user, repos] = await Promise.all([
+        githubApiRequest(`/users/${username}`, username),
+        githubApiRequest(`/users/${username}/repos?per_page=100&sort=updated`, username)
+      ]);
       
       // Calculate basic stats
       const totalStars = repos.reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
       const totalForks = repos.reduce((sum, repo) => sum + (repo.forks_count || 0), 0);
       const languageStats = calculateLanguageStats(repos);
       
-      results.push({
+      return {
         success: true,
         username: user.login,
         name: user.name || user.login,
@@ -396,17 +401,16 @@ app.post('/api/github/bulk', async (req, res) => {
         totalForks,
         topLanguage: languageStats[0]?.language || 'N/A',
         profileUrl: user.html_url
-      });
-      
+      };
     } catch (error) {
       console.error(`Error fetching user ${username}:`, error);
-      results.push({
+      return {
         success: false,
         error: error.message || 'Failed to fetch user data',
         username
-      });
+      };
     }
-  }
+  }));
   
   res.json({ results });
 });
