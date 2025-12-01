@@ -185,12 +185,10 @@ const HomePage = () => {
                                 </span>
                                 <span className="text-white drop-shadow-2xl">Board</span>
                             </h1>                            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-gray-200 mb-6" itemProp="alternativeHeadline">
-                                Intelligent Coding Profile Analysis for Candidate Evaluation
+                                Analyze Coding Profiles Across Multiple Platforms
                             </h2>
-                            <p className="text-lg sm:text-xl md:text-2xl text-gray-200 max-w-4xl mx-auto leading-relaxed mb-12 px-4" itemProp="description">
-                                SkillBoard empowers recruiters by providing a comprehensive platform to analyze candidates' coding profiles 
-                                from multiple competitive programming platforms like CodeChef and LeetCode. Simplify hiring with data-driven 
-                                insights, performance metrics, and bulk profile search capabilities.
+                            <p className="text-lg sm:text-xl text-gray-200 max-w-3xl mx-auto leading-relaxed mb-12 px-4" itemProp="description">
+                                Compare candidates from CodeChef, LeetCode, CodeForces & GitHub with data-driven insights and bulk analysis.
                             </p>
                         </div>
 
