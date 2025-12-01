@@ -109,8 +109,7 @@ const HomePage = () => {
                 users: '100M+',
                 difficulty: 'All Levels'
             },
-            available: false,
-            comingSoon: true
+            available: true
         },
         {
             id: 'hackerrank',
@@ -151,7 +150,7 @@ const HomePage = () => {
         } else if (platformId === 'codeforces') {
             navigate('/codeforcesloder');
         } else if (platformId === 'github') {
-            showToast('GitHub analyzer is coming soon! Stay tuned 🐙', 'info');
+            navigate('/githubloder');
         } else if (platformId === 'hackerrank') {
             showToast('HackerRank analyzer is coming soon! Stay tuned 🚀', 'info');
         }

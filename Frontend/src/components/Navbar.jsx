@@ -147,7 +147,8 @@ const Navbar = () => {    const navigate = useNavigate();
             subItems: [
                 { name: 'CodeChef', route: '/codechefloder' },
                 { name: 'LeetCode', route: '/leetcodeloder' },
-                { name: 'CodeForces', route: '/codeforcesloder' }
+                { name: 'CodeForces', route: '/codeforcesloder' },
+                { name: 'GitHub', route: '/githubloder' }
             ]
         },
         { name: 'About', icon: User, action: () => navigate('/about') },        { name: 'Contact', icon: Phone, action: () => {

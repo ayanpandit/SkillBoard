@@ -41,6 +41,7 @@ import HomePage from "./components/Home";
 import LeetCodeLoader from "./components/leetcodeloder";
 import CodeChefLoader from "./components/codechefloder";
 import CodeForcesLoader from "./components/codeforcesloder";
+import GithubLoader from "./components/githubloder";
 import About from "./components/About";
 import Navbar from "./components/Navbar";
 import Profile from "./components/Profile";
@@ -55,7 +56,8 @@ const AppWrapper = () => {
 
   const pathname = location.pathname;  const isAnalyzerPage = pathname.toLowerCase() === '/codechefloder' || 
                           pathname.toLowerCase() === '/leetcodeloder' ||
-                          pathname.toLowerCase() === '/codeforcesloder';
+                          pathname.toLowerCase() === '/codeforcesloder' ||
+                          pathname.toLowerCase() === '/githubloder';
 
   useEffect(() => {
     const path = location.pathname;
@@ -81,14 +83,15 @@ const AppWrapper = () => {
   return (
     <div className={`App ${isAnalyzerPage ? 'bg-black' : 'bg-black'}`}>
       <Navbar />
-      <SEO />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/leetcodeloder" element={<LeetCodeLoader />} />
         <Route path="/codechefloder" element={<CodeChefLoader />} />
         <Route path="/codeforcesloder" element={<CodeForcesLoader />} />
+        <Route path="/githubloder" element={<GithubLoader />} />
         <Route path="/about" element={<About />} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />        <Route path="/auth/callback" element={<AuthRedirect />} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/auth/callback" element={<AuthRedirect />} />
         <Route path="/leetcodeprofileanalyze" element={<Navigate to="/leetcodeloder" replace />} />
         <Route path="*" element={<HomePage />} />
       </Routes>

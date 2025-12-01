@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: github-profile-analyzer
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3003
+      - key: GITHUB_TOKEN
+        sync: false
