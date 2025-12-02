@@ -8,9 +8,9 @@ import {
   Download, Filter, RotateCcw
 } from 'lucide-react';
 
-// LeetCode API endpoints - single URL for both dev and production
-const API_URL = import.meta.env.VITE_API_URL;
-const API_BULK_URL = import.meta.env.VITE_API_BULK_URL;
+// LeetCode API endpoints - using environment variables
+const API_URL = import.meta.env.VITE_LEETCODE_API_URL || 'http://localhost:3000/api/leetcode';
+const API_BULK_URL = import.meta.env.VITE_LEETCODE_API_BULK_URL || 'http://localhost:3000/api/leetcode/bulk';
 
 
 
