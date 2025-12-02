@@ -2,13 +2,12 @@ import React, { useState, useEffect, useMemo, useRef, useCallback, Fragment } fr
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import {
-  Search, UploadCloud, X, Loader2, UserCircle, BarChart2, CalendarDays,
-  Code, Medal, Trophy, Activity, ExternalLink, ChevronDown, ChevronUp,
-  Brain, Briefcase, MapPin, Star, CheckCircle, AlertTriangle,
-  Download, Filter, RotateCcw
+  Search, UploadCloud, X, Loader2, UserCircle, ChevronDown, ChevronUp,
+  CheckCircle, AlertTriangle, Download, RotateCcw, ExternalLink
 } from 'lucide-react';
+import { getNestedValue, SortableHeader } from '../utils/sharedComponents';
 
-// CodeForces API endpoints - now using local backend server
+// CodeForces API endpoints - using environment variables
 const API_URL = import.meta.env.VITE_CODEFORCES_API_URL || 'http://localhost:3002/api/codeforces';
 const API_BULK_URL = import.meta.env.VITE_CODEFORCES_API_BULK_URL || 'http://localhost:3002/api/codeforces/bulk';
 
@@ -28,30 +27,44 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
   const [filterUsername, setFilterUsername] = useState('');
   const [filterRealName, setFilterRealName] = useState('');
 
-  // Helper to safely get nested values
-  const getNestedValue = (obj, path, defaultValue = 'N/A') => {
-    const value = path.split('.').reduce((acc, part) => acc && acc[part], obj);
-    return (value === undefined || value === null) ? defaultValue : value;
-  };
-
   // Fetch single user data
   const fetchSingleUserData = useCallback(async (username) => {
     try {
-      const response = await axios.get(`${API_URL}/${username}`);
+      console.log(`Fetching data for user: ${username} from ${API_URL}/${username}`);
+      const response = await axios.get(`${API_URL}/${username}`, {
+        timeout: 15000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Single user response:', response.data);
       return { username, ...response.data };
     } catch (err) {
       console.error(`Error fetching data for ${username}:`, err);
-      return { username, error: err.response?.data?.error || 'Failed to fetch data' };
+      const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch data';
+      return { username, error: errorMsg };
     }
   }, []);
 
   // Fetch bulk user data
   const fetchBulkUserData = async (usernames) => {
     try {
-      const response = await axios.post(API_BULK_URL, { usernames });
+      console.log(`Fetching bulk data for ${usernames.length} users from ${API_BULK_URL}`);
+      const response = await axios.post(API_BULK_URL, { usernames }, {
+        timeout: 120000, // 2 minute timeout for bulk requests
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      console.log('Bulk data response:', response.data);
       return response.data.results || [];
     } catch (err) {
       console.error('Error fetching bulk data:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
       throw err;
     }
   };
@@ -80,7 +93,9 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
         results = await fetchBulkUserData(usernamesToFetch);
         setProcessingProgress(usernamesToFetch.length);
       } catch (err) {
-        setError('Failed to fetch bulk data. Please try again.');
+        const errorMsg = err.response?.data?.error || err.message || 'Failed to fetch bulk data';
+        console.error('Bulk fetch error:', errorMsg);
+        setError(`Failed to fetch bulk data: ${errorMsg}. Please check your internet connection and try again.`);
       }
     }
 
@@ -191,19 +206,6 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
     
     processInitialFile();
   }, [initialFileUrl, initialFileName]);
-
-  // Sortable header component
-  const SortableHeader = ({ columnKey, title, currentSortConfig, onRequestSort }) => (
-    <th scope="col" className="px-5 py-3 cursor-pointer hover:bg-slate-600/50 transition-colors select-none" onClick={() => onRequestSort(columnKey)}>
-      <div className="flex items-center justify-between">
-        <span>{title}</span>
-        <div className="flex flex-col ml-1">
-          <ChevronUp size={12} className={currentSortConfig.key === columnKey && currentSortConfig.direction === 'ascending' ? 'text-sky-400' : 'text-slate-600'} />
-          <ChevronDown size={12} className={currentSortConfig.key === columnKey && currentSortConfig.direction === 'descending' ? 'text-sky-400' : 'text-slate-600'} />
-        </div>
-      </div>
-    </th>
-  );
 
   // Table columns configuration
   const tableColumns = useMemo(() => [
@@ -477,7 +479,7 @@ const CodeForcesProfileAnalyzer = ({ initialFileUrl, initialFileName }) => {
                   <tr>
                     {tableColumns.map(col => (
                       col.sortable ?
-                        <SortableHeader key={col.key} columnKey={col.key} title={col.label} currentSortConfig={sortConfig} onRequestSort={requestSort} />
+                        <SortableHeader key={col.key} columnKey={col.key} title={col.label} currentSortConfig={sortConfig} onRequestSort={requestSort} accentColor="sky" />
                         : <th key={col.key} scope="col" className="px-5 py-3">{col.label}</th>
                     ))}
                   </tr>
